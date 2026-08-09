@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+DerivedData/
+
+# XcodeGen — project.yml is the source of truth; regenerate with
+# `xcodegen generate` rather than committing the generated project.
+Qourt.xcodeproj/
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
+
+# Claude Code session state (not project source)
+.claude/
+CLAUDE.md
+
+# Secrets — never commit
+*.p8
+.env
+.env.local
+.env.*.local
