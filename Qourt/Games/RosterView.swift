@@ -110,6 +110,8 @@ private struct RosterRow: View {
     let player: GamePlayer
     var viewModel: RosterViewModel
 
+    private var matchCount: Int { viewModel.matchCounts[player.id] ?? 0 }
+
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
@@ -120,6 +122,11 @@ private struct RosterRow: View {
             }
 
             Spacer()
+
+            Text("\(matchCount) played")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .padding(.trailing, 4)
 
             Menu {
                 Menu("Skill level") {

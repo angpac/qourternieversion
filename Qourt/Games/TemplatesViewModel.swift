@@ -79,6 +79,8 @@ extension CreateGameViewModel {
     func apply(_ template: GameTemplate) {
         numCourts = template.numCourts
         isDoubles = template.isDoubles
+        formatMode = template.isDoubles ? .doubles : .singles
+        courtSinglesOverrides = [:]
         requiresApproval = template.requiresApproval
         format = template.format
         formatSettings = FormatSettings(from: template.formatSettings)

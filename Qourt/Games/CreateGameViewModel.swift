@@ -6,6 +6,18 @@
 import Foundation
 import Supabase
 
+enum GameFormatMode: String, CaseIterable, Identifiable {
+    case doubles, singles, mixed
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .doubles: return "Doubles"
+        case .singles: return "Singles"
+        case .mixed: return "Mixed"
+        }
+    }
+}
+
 @Observable
 final class CreateGameViewModel {
     // Step 1: Create a game
@@ -16,12 +28,59 @@ final class CreateGameViewModel {
     var isDoubles: Bool = true
     var requiresApproval: Bool = false
     var format: RotationFormat = .kingOfTheCourt
+    var selectedClubId: UUID?
+    var availableClubs: [Club] = []
+
+    /// Doubles/Singles just set isDoubles directly, same as always. Mixed
+    /// leaves isDoubles as the fallback for any court that isn't
+    /// individually overridden below, and reveals a per-court picker so
+    /// setting up a mixed session doesn't require hunting for Manage
+    /// Courts after the game already exists.
+    var formatMode: GameFormatMode = .doubles {
+        didSet {
+            switch formatMode {
+            case .doubles: isDoubles = true
+            case .singles: isDoubles = false
+            case .mixed: break
+            }
+        }
+    }
+    /// Keyed by court index (0-based); a missing entry means "use the
+    /// overall default above" for that court.
+    var courtSinglesOverrides: [Int: Bool] = [:]
 
     // Step 2: Rotation format settings
     var formatSettings = FormatSettings()
 
     var errorMessage: String?
     var createdGame: Game?
+
+    @MainActor
+    func loadAvailableClubs(ownerID: UUID) async {
+        struct ClubAdminRow: Decodable { let club_id: UUID }
+        let adminRows: [ClubAdminRow] = (try? await supabase.from("club_admins")
+            .select("club_id")
+            .eq("profile_id", value: ownerID)
+            .execute()
+            .value) ?? []
+
+        if adminRows.isEmpty {
+            availableClubs = (try? await supabase.from("clubs")
+                .select()
+                .eq("owner_id", value: ownerID)
+                .order("created_at", ascending: false)
+                .execute()
+                .value) ?? []
+        } else {
+            let adminIDs = adminRows.map(\.club_id.uuidString).joined(separator: ",")
+            availableClubs = (try? await supabase.from("clubs")
+                .select()
+                .or("owner_id.eq.\(ownerID),id.in.(\(adminIDs))")
+                .order("created_at", ascending: false)
+                .execute()
+                .value) ?? []
+        }
+    }
 
     private static let joinCodeAlphabet = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
 
@@ -36,7 +95,7 @@ final class CreateGameViewModel {
         // back to the anon key and failing RLS. Fail fast with a clear message
         // instead of surfacing Postgres's generic RLS violation error.
         guard let session = try? await supabase.auth.session, session.user.id == ownerID else {
-            errorMessage = "Your session isn't valid anymore — sign out and sign in again."
+            errorMessage = "Your session isn't valid anymore. Sign out and sign in again."
             return false
         }
 
@@ -52,6 +111,7 @@ final class CreateGameViewModel {
             let format_settings: JSONObject
             let join_code: String
             let admin_invite_code: String
+            let club_id: UUID?
         }
 
         let newGame = NewGame(
@@ -65,7 +125,8 @@ final class CreateGameViewModel {
             format: format.rawValue,
             format_settings: formatSettings.asJSONObject(for: format),
             join_code: generateJoinCode(),
-            admin_invite_code: generateJoinCode()
+            admin_invite_code: generateJoinCode(),
+            club_id: selectedClubId
         )
 
         do {
@@ -88,7 +149,8 @@ final class CreateGameViewModel {
     }
 
     private func createCourts(for game: Game) async {
-        try? await supabase.from("courts").insert(Self.newCourtRows(for: game)).execute()
+        let overrides = formatMode == .mixed ? courtSinglesOverrides : [:]
+        _ = try? await supabase.from("courts").insert(Self.newCourtRows(for: game, singlesOverrides: overrides)).execute()
     }
 
     /// Half-Court Kingminton splits each physical court into two independent
@@ -96,11 +158,13 @@ final class CreateGameViewModel {
     /// separate court rows sharing a physical court number, reusing all the
     /// existing court/match infrastructure instead of adding a "lane" concept
     /// to matches.
-    static func newCourtRows(for game: Game) -> [NewCourtRow] {
+    static func newCourtRows(for game: Game, singlesOverrides: [Int: Bool] = [:]) -> [NewCourtRow] {
         let isKingminton = game.format == .halfCourtKingminton
         let isChallengeCourt = game.format == .challengeCourt
 
         if isKingminton {
+            // Every lane is already forced to singles via is_lane_split —
+            // a singles_override on top of that wouldn't mean anything.
             return (0..<game.numCourts).flatMap { index in
                 ["A", "B"].map { lane in
                     NewCourtRow(
@@ -108,7 +172,8 @@ final class CreateGameViewModel {
                         name: "Court \(index + 1) · Lane \(lane)",
                         position: index,
                         is_lane_split: true,
-                        is_challenge_court: false
+                        is_challenge_court: false,
+                        singles_override: nil
                     )
                 }
             }
@@ -120,7 +185,8 @@ final class CreateGameViewModel {
                 name: "Court \(index + 1)",
                 position: index,
                 is_lane_split: false,
-                is_challenge_court: isChallengeCourt && index == 0
+                is_challenge_court: isChallengeCourt && index == 0,
+                singles_override: singlesOverrides[index]
             )
         }
     }
@@ -132,4 +198,5 @@ struct NewCourtRow: Encodable {
     let position: Int
     let is_lane_split: Bool
     let is_challenge_court: Bool
+    let singles_override: Bool?
 }

@@ -83,6 +83,42 @@ async function sendWebPush(
   }
 }
 
+// Live Activity pushes use a different APNs push type/topic and payload
+// shape than a regular alert — no title/body, just a content-state blob
+// matching PlayerActivityAttributes.ContentState field-for-field (Swift's
+// Codable synthesis expects these exact camelCase keys).
+async function sendLiveActivityUpdate(gamePlayerId: string, contentState: Record<string, unknown>) {
+  const { data: tokenRow } = await supabase
+    .from("live_activity_tokens")
+    .select("push_token")
+    .eq("game_player_id", gamePlayerId)
+    .single();
+  if (!tokenRow) return;
+
+  const jwt = await apnsJwt();
+  if (!jwt) return;
+  try {
+    await fetch(`https://api.push.apple.com/3/device/${tokenRow.push_token}`, {
+      method: "POST",
+      headers: {
+        authorization: `bearer ${jwt}`,
+        "apns-topic": `${APNS_BUNDLE_ID}.push-type.liveactivity`,
+        "apns-push-type": "liveactivity",
+        "apns-priority": "10",
+      },
+      body: JSON.stringify({
+        aps: {
+          timestamp: Math.floor(Date.now() / 1000),
+          event: "update",
+          "content-state": contentState,
+        },
+      }),
+    });
+  } catch (error) {
+    console.error("Live Activity push failed", error);
+  }
+}
+
 async function notifyGamePlayer(gamePlayerId: string, title: string, body: string) {
   const { data: player } = await supabase
     .from("game_players")
@@ -113,11 +149,12 @@ async function notifyGamePlayer(gamePlayerId: string, title: string, body: strin
   await Promise.all(sends);
 }
 
-async function handleMatchAssigned(matchPlayerId: string) {
+async function handleMatchAssigned(matchId: string, gamePlayerId: string) {
   const { data: matchPlayer } = await supabase
     .from("match_players")
-    .select("game_player_id, match_id")
-    .eq("id", matchPlayerId)
+    .select("game_player_id, match_id, team")
+    .eq("match_id", matchId)
+    .eq("game_player_id", gamePlayerId)
     .single();
   if (!matchPlayer) return;
 
@@ -138,6 +175,35 @@ async function handleMatchAssigned(matchPlayerId: string) {
     "You're up!",
     court?.name ? `${court.name} — ${game?.name ?? "your game"}` : `Head to your court — ${game?.name ?? ""}`
   );
+
+  const { data: allRows } = await supabase
+    .from("match_players")
+    .select("team, game_player_id, game_players(display_name)")
+    .eq("match_id", matchPlayer.match_id);
+
+  if (allRows) {
+    const onTeamA = matchPlayer.team === "a";
+    const myTeam = allRows.filter((r) => r.team === (onTeamA ? "a" : "b"));
+    const oppTeam = allRows.filter((r) => r.team === (onTeamA ? "b" : "a"));
+    const teammateOthers = myTeam
+      .filter((r) => r.game_player_id !== matchPlayer.game_player_id)
+      .map((r) => (r.game_players as { display_name: string } | null)?.display_name)
+      .filter(Boolean);
+    const opponentNames = oppTeam
+      .map((r) => (r.game_players as { display_name: string } | null)?.display_name)
+      .filter(Boolean)
+      .join(" & ");
+
+    await sendLiveActivityUpdate(matchPlayer.game_player_id, {
+      status: "onCourt",
+      queuePosition: null,
+      courtName: court?.name ?? null,
+      teammateNames: teammateOthers.length > 0 ? `You & ${teammateOthers.join(" & ")}` : "You",
+      opponentNames,
+      scoreA: 0,
+      scoreB: 0,
+    });
+  }
 }
 
 async function handleAnnouncement(announcementId: string) {
@@ -175,7 +241,7 @@ Deno.serve(async (req) => {
 
   try {
     if (payload.type === "match_assigned") {
-      await handleMatchAssigned(payload.match_player_id);
+      await handleMatchAssigned(payload.match_id, payload.game_player_id);
     } else if (payload.type === "announcement") {
       await handleAnnouncement(payload.announcement_id);
     }

@@ -90,7 +90,7 @@ struct PlayerBracketView: View {
     private func roundLabel(bracket: String, round: Int) -> String {
         switch bracket {
         case "final": return "Grand Final"
-        case "losers": return "Losers — Round \(round)"
+        case "losers": return "Losers Round \(round)"
         default: return "Round \(round)"
         }
     }

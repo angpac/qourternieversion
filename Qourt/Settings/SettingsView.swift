@@ -29,6 +29,16 @@ struct SettingsView: View {
                     }
                 }
 
+                if auth.role == .admin {
+                    Section {
+                        NavigationLink {
+                            ClubsListView(auth: auth)
+                        } label: {
+                            Label("Manage Clubs", systemImage: "person.3.sequence")
+                        }
+                    }
+                }
+
                 Section {
                     Button {
                         auth.role = auth.role == .admin ? .player : .admin

@@ -15,13 +15,16 @@ struct PickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selected: [GamePlayer] = []
 
-    private let teammatesNeeded = 3
+    private var teammatesNeeded: Int { viewModel.pickerTeammatesNeeded }
+    private var isSingles: Bool { teammatesNeeded == 1 }
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    Text("You're the Picker! Choose \(teammatesNeeded) players to build your doubles match.")
+                    Text(isSingles
+                         ? "You're the Picker! Choose your opponent for a singles match."
+                         : "You're the Picker! Choose \(teammatesNeeded) players to build your doubles match.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }

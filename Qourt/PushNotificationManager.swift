@@ -27,7 +27,7 @@ enum PushNotificationManager {
             let platform: String
         }
 
-        try? await supabase.from("apns_device_tokens")
+        _ = try? await supabase.from("apns_device_tokens")
             .upsert(
                 DeviceTokenUpsert(profile_id: userID, device_token: token, platform: platform),
                 onConflict: "device_token"

@@ -9,6 +9,7 @@ import Supabase
 struct FormatSettings {
     var roundMinutes: Int = 8
     var autoRotate: Bool = true
+    var prepSeconds: Int = 15
     var pickerPoolSize: Int = 10
     var pointTarget: Int = 21
     var winCap: Int = 3
@@ -26,6 +27,7 @@ struct FormatSettings {
     init(from json: JSONObject) {
         if case let .integer(value)? = json["round_minutes"] { roundMinutes = value }
         if case let .bool(value)? = json["auto_rotate"] { autoRotate = value }
+        if case let .integer(value)? = json["prep_seconds"] { prepSeconds = value }
         if case let .integer(value)? = json["picker_pool_size"] { pickerPoolSize = value }
         if case let .integer(value)? = json["point_target"] {
             pointTarget = value
@@ -38,10 +40,13 @@ struct FormatSettings {
     func asJSONObject(for format: RotationFormat) -> JSONObject {
         var settings: JSONObject
         switch format {
+        case .manual:
+            settings = [:]
         case .kingOfTheCourt:
             settings = [
                 "round_minutes": .integer(roundMinutes),
-                "auto_rotate": .bool(autoRotate)
+                "auto_rotate": .bool(autoRotate),
+                "prep_seconds": .integer(prepSeconds)
             ]
         case .pegBoard:
             settings = [

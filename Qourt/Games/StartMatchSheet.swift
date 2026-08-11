@@ -75,7 +75,7 @@ struct StartMatchSheet: View {
                         if isStarting {
                             ProgressView()
                         } else {
-                            Text("Start")
+                            Text("Assign")
                         }
                     }
                     .disabled(!canStart || isStarting)

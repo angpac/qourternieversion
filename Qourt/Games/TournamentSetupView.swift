@@ -44,7 +44,7 @@ struct TournamentSetupView: View {
                 } header: {
                     Text("Seed order")
                 } footer: {
-                    Text("Top of the list is seed #1 — kept furthest apart from seed #2 in the bracket.")
+                    Text("Top of the list is seed #1, kept furthest apart from seed #2 in the bracket.")
                 }
                 .environment(\.editMode, .constant(.active))
             }
@@ -71,7 +71,7 @@ struct TournamentSetupView: View {
                 }
                 .disabled(viewModel.isGenerating || viewModel.roster.count < 2)
             } footer: {
-                Text("This locks in the bracket — anyone who joins after this can't be added to it.")
+                Text("This locks in the bracket. Anyone who joins after this can't be added to it.")
             }
         }
         .navigationTitle("Set up tournament")

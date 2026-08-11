@@ -13,6 +13,10 @@ struct Court: Codable, Identifiable, Hashable {
     var isLaneSplit: Bool
     var isChallengeCourt: Bool
     var winStreak: Int
+    /// Nil inherits the game's overall doubles/singles setting; true/false
+    /// forces this one court regardless — a "mixed" session where most
+    /// courts are doubles but one is set aside for singles.
+    var singlesOverride: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id, name, position
@@ -20,5 +24,6 @@ struct Court: Codable, Identifiable, Hashable {
         case isLaneSplit = "is_lane_split"
         case isChallengeCourt = "is_challenge_court"
         case winStreak = "win_streak"
+        case singlesOverride = "singles_override"
     }
 }

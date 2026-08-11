@@ -13,6 +13,7 @@ type AnnouncementItem = { id: string; message: string; sent_at: string };
 type GuestStatus = {
   game_name: string;
   game_format: string;
+  is_doubles: boolean;
   join_code: string;
   player_status: "pending" | "queued" | "on_court" | "resting" | "removed";
   queue_position: number | null;
@@ -32,6 +33,19 @@ type GuestStatus = {
 };
 
 const POLL_INTERVAL_MS = 2000;
+
+// A rough "how many matches until mine" hint on top of the raw individual
+// queue position — useful for doubles, where "#7 in line" alone doesn't
+// say much. Skipped for Peg Board: the Picker chooses from a pool further
+// down the line rather than the next N players in order, so "the next 4
+// are a match" doesn't hold there.
+function groupsAheadText(status: GuestStatus): string | null {
+  if (status.game_format === "peg_board" || status.queue_position === null) return null;
+  const matchSize = status.is_doubles ? 4 : 2;
+  const groupsAhead = Math.floor((status.queue_position - 1) / matchSize);
+  if (groupsAhead < 1) return null;
+  return `About ${groupsAhead} more match${groupsAhead === 1 ? "" : "es"} before yours`;
+}
 
 export default function StatusPage() {
   const router = useRouter();
@@ -259,6 +273,9 @@ export default function StatusPage() {
             <p className="text-2xl font-bold text-zinc-900">
               You&apos;re #{status.queue_position} in line
             </p>
+            {groupsAheadText(status) && (
+              <p className="text-sm text-zinc-600">{groupsAheadText(status)}</p>
+            )}
             <p className="text-sm text-zinc-500">{status.game_format}</p>
           </div>
         )}
@@ -372,7 +389,7 @@ export default function StatusPage() {
       )}
       {notifStatus === "denied" && (
         <p className="text-xs text-emerald-100/70">
-          Notifications are blocked — enable them in your browser settings to get alerts.
+          Notifications are blocked. Enable them in your browser settings to get alerts.
         </p>
       )}
 

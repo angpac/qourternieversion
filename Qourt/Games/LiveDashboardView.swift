@@ -15,9 +15,18 @@ struct LiveDashboardView: View {
     @State private var isShowingRoster = false
     @State private var isSendingAnnouncement = false
     @State private var isShowingCoAdmins = false
+    @State private var isShowingCourts = false
 
-    init(game: Game) {
+    /// Set only when this view is pushed from the just-created-game flow
+    /// (inside CreateGameView's own sheet/NavigationStack) rather than
+    /// selected from the games list — gives that path a "Done" button to
+    /// return to the list, since there's no other exit from a pushed view
+    /// inside a modal.
+    private var onExitToGamesList: (() -> Void)?
+
+    init(game: Game, onExitToGamesList: (() -> Void)? = nil) {
         _viewModel = State(initialValue: LiveDashboardViewModel(game: game))
+        self.onExitToGamesList = onExitToGamesList
     }
 
     var body: some View {
@@ -44,6 +53,8 @@ struct LiveDashboardView: View {
                             .padding(12)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                        } else if viewModel.isPaused {
+                            pausedBanner
                         }
 
                         if viewModel.isLoading {
@@ -63,7 +74,23 @@ struct LiveDashboardView: View {
         }
         .navigationTitle(viewModel.game.name)
         .navigationBarTitleDisplayMode(.inline)
+        // In the create-a-game flow, this is pushed straight after Invite
+        // Players — but that QR/join code screen is also always reachable
+        // from "Invite players" in the ••• menu below, so there's no need
+        // to keep it as a back-navigation stop. The back chevron here
+        // exits the whole flow to My Games directly instead of popping
+        // back to a screen that's already one tap away.
+        .navigationBarBackButtonHidden(onExitToGamesList != nil)
         .toolbar {
+            if let onExitToGamesList {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        onExitToGamesList()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                    }
+                }
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     isAddingWalkIn = true
@@ -102,6 +129,31 @@ struct LiveDashboardView: View {
                 }
             }
             ToolbarItem(placement: .secondaryAction) {
+                Button {
+                    isShowingCourts = true
+                } label: {
+                    Label("Manage courts", systemImage: "sportscourt")
+                }
+            }
+            ToolbarItem(placement: .secondaryAction) {
+                Button {
+                    Task {
+                        if viewModel.isPaused {
+                            await viewModel.resumeGame()
+                        } else {
+                            await viewModel.pauseGame()
+                        }
+                    }
+                } label: {
+                    if viewModel.isPaused {
+                        Label("Resume game", systemImage: "play.circle")
+                    } else {
+                        Label("Pause game", systemImage: "pause.circle")
+                    }
+                }
+                .disabled(viewModel.hasEnded)
+            }
+            ToolbarItem(placement: .secondaryAction) {
                 Button(role: .destructive) {
                     isConfirmingEndGame = true
                 } label: {
@@ -116,7 +168,13 @@ struct LiveDashboardView: View {
             StartMatchSheet(viewModel: viewModel, court: court)
         }
         .sheet(item: $matchToScore) { match in
-            CourtDetailSheet(viewModel: viewModel, matchWithPlayers: match)
+            CourtDetailSheet(
+                viewModel: viewModel,
+                matchWithPlayers: match,
+                onClearedForReassignment: { court in
+                    courtForMatchPicker = court
+                }
+            )
         }
         .sheet(isPresented: $isAddingWalkIn) {
             AddWalkInSheet(viewModel: viewModel)
@@ -149,6 +207,16 @@ struct LiveDashboardView: View {
                     }
             }
         }
+        .sheet(isPresented: $isShowingCourts) {
+            NavigationStack {
+                ManageCourtsView(viewModel: viewModel)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close") { isShowingCourts = false }
+                        }
+                    }
+            }
+        }
         .confirmationDialog(
             "End this game?",
             isPresented: $isConfirmingEndGame,
@@ -168,7 +236,7 @@ struct LiveDashboardView: View {
     }
 
     private var reconnectingBanner: some View {
-        Label("Reconnecting — you may be seeing slightly stale data", systemImage: "wifi.slash")
+        Label("Reconnecting, you may be seeing slightly stale data", systemImage: "wifi.slash")
             .font(.footnote.bold())
             .foregroundStyle(.orange)
             .padding(12)
@@ -176,9 +244,39 @@ struct LiveDashboardView: View {
             .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
     }
 
+    private var pausedBanner: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label("Game paused", systemImage: "pause.circle.fill")
+                .font(.footnote.bold())
+            Text("Rotation and round timers are frozen. Matches already on court can still be scored and ended as usual.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .foregroundStyle(.orange)
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+    }
+
     private var roundTimerCard: some View {
         VStack(spacing: 8) {
-            if let roundEndsAt = viewModel.roundEndsAt {
+            if let prepEndsAt = viewModel.prepEndsAt {
+                Text("Get to your court!")
+                    .font(.headline)
+                if prepEndsAt > Date() {
+                    Text(timerInterval: Date.now...prepEndsAt, countsDown: true)
+                        .font(.system(size: 56, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.orange)
+                } else {
+                    Text("0")
+                        .font(.system(size: 56, weight: .bold, design: .rounded))
+                        .foregroundStyle(.orange)
+                }
+                Text("Round starts the moment this hits zero")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if let roundEndsAt = viewModel.roundEndsAt {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     let remaining = max(0, roundEndsAt.timeIntervalSince(context.date))
                     Text(formatCountdown(remaining))
@@ -198,14 +296,15 @@ struct LiveDashboardView: View {
                     }
                 }
                 .buttonStyle(.bordered)
-                .disabled(viewModel.isRotating)
+                .disabled(viewModel.isRotating || viewModel.isPaused)
             } else {
                 Text("No round running")
                     .foregroundStyle(.secondary)
                 Button("Start round") {
-                    Task { await viewModel.startRound() }
+                    Task { await viewModel.startPrepPhase() }
                 }
                 .buttonStyle(.borderedProminent)
+                .disabled(viewModel.isPaused)
             }
         }
         .frame(maxWidth: .infinity)
@@ -220,8 +319,20 @@ struct LiveDashboardView: View {
 
     private var courtsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Courts")
-                .font(.headline)
+            HStack {
+                Text("Courts")
+                    .font(.headline)
+                Spacer()
+                if viewModel.canAutoAssign {
+                    Button {
+                        Task { await viewModel.autoAssignOpenCourts() }
+                    } label: {
+                        Label("Auto-assign by skill", systemImage: "wand.and.stars")
+                            .font(.caption.bold())
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
 
             if viewModel.courts.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
@@ -237,7 +348,7 @@ struct LiveDashboardView: View {
                         CourtCard(
                             court: court,
                             match: viewModel.activeMatches[court.id],
-                            onTapEmpty: { courtForMatchPicker = court },
+                            onTapEmpty: { if !viewModel.isPaused { courtForMatchPicker = court } },
                             onTapMatch: { match in matchToScore = match }
                         )
                     }
@@ -299,6 +410,11 @@ private struct CourtCard: View {
                         Text("🔥\(court.winStreak)")
                             .font(.caption2.bold())
                     }
+                    if let override = court.singlesOverride {
+                        Text(override ? "Singles" : "Doubles")
+                            .font(.caption2.bold())
+                            .foregroundStyle(.secondary)
+                    }
                     Spacer()
                     if let match {
                         Circle()
@@ -308,13 +424,17 @@ private struct CourtCard: View {
                 }
 
                 if let match {
-                    Text(match.teamA.map(\.displayName).joined(separator: " & "))
-                        .font(.caption)
-                    Text("vs")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Text(match.teamB.map(\.displayName).joined(separator: " & "))
-                        .font(.caption)
+                    if match.teamA.isEmpty && match.teamB.isEmpty {
+                        Text("No players, tap to fix")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    } else {
+                        // One line, "Name & Name vs Name & Name" — easier to
+                        // scan at a glance than three stacked lines.
+                        Text("\(match.teamA.map(\.displayName).joined(separator: " & ")) vs \(match.teamB.map(\.displayName).joined(separator: " & "))")
+                            .font(.caption)
+                            .lineLimit(2)
+                    }
                     if match.match.status == .awaitingConfirmation {
                         Text("Needs confirmation")
                             .font(.caption2.bold())
@@ -322,15 +442,24 @@ private struct CourtCard: View {
                     }
                 } else {
                     Spacer()
-                    Text("Open")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 6) {
+                        Image(systemName: "plus.circle.fill")
+                        Text("Tap to assign players")
+                    }
+                    .font(.caption.bold())
+                    .foregroundStyle(.tint)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
             .frame(height: 100)
             .background(match != nil ? Color.accentColor.opacity(0.12) : Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+            .overlay {
+                if match == nil {
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(Color.accentColor.opacity(0.4), style: StrokeStyle(lineWidth: 1.5, dash: [5]))
+                }
+            }
         }
         .buttonStyle(.plain)
     }

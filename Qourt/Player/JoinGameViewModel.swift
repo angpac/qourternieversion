@@ -39,7 +39,7 @@ final class JoinGameViewModel {
             .execute()
             .value
             if preview.status == "ended" {
-                previewError = "This game has ended — the code no longer works."
+                previewError = "This game has ended. The code no longer works."
             } else {
                 previewGameName = preview.name
             }

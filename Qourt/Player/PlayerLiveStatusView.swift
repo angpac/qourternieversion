@@ -31,6 +31,14 @@ struct PlayerLiveStatusView: View {
                         reconnectingBanner
                     }
 
+                    if viewModel.isPaused {
+                        pausedBanner
+                    }
+
+                    if let prepEndsAt = viewModel.prepEndsAt {
+                        prepCountdownBanner(prepEndsAt)
+                    }
+
                     if let latest = viewModel.announcements.first {
                         announcementBanner(latest)
                     }
@@ -44,7 +52,7 @@ struct PlayerLiveStatusView: View {
                         statusCard(icon: "hourglass", title: "Waiting for approval", subtitle: "The host needs to approve you before you can join the line.")
                     case .queued:
                         queuedCard
-                        if viewModel.isPicker {
+                        if viewModel.isPicker && !viewModel.isPaused {
                             pickerCard
                         }
                     case .onCourt:
@@ -183,8 +191,36 @@ struct PlayerLiveStatusView: View {
         .frame(maxWidth: .infinity)
     }
 
+    private func prepCountdownBanner(_ prepEndsAt: Date) -> some View {
+        VStack(spacing: 6) {
+            Text("Get to your court!")
+                .font(.headline)
+            if prepEndsAt > Date() {
+                Text(timerInterval: Date.now...prepEndsAt, countsDown: true)
+                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+            } else {
+                Text("0")
+                    .font(.system(size: 40, weight: .bold, design: .rounded))
+            }
+        }
+        .foregroundStyle(.white)
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(Color.orange, in: RoundedRectangle(cornerRadius: 16))
+    }
+
     private var reconnectingBanner: some View {
-        Label("Reconnecting — you may be seeing slightly stale data", systemImage: "wifi.slash")
+        Label("Reconnecting, you may be seeing slightly stale data", systemImage: "wifi.slash")
+            .font(.footnote.bold())
+            .foregroundStyle(.orange)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var pausedBanner: some View {
+        Label("Game paused — sit tight, the host will resume shortly", systemImage: "pause.circle.fill")
             .font(.footnote.bold())
             .foregroundStyle(.orange)
             .padding(12)
@@ -212,8 +248,13 @@ struct PlayerLiveStatusView: View {
                 .foregroundStyle(.tint)
             Text("You're #\(viewModel.queuePosition ?? 0) in line")
                 .font(.title2.bold())
+            if let groupsAheadText = viewModel.groupsAheadText {
+                Text(groupsAheadText)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
             Text(viewModel.game.format.title)
-                .font(.subheadline)
+                .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)

@@ -10,6 +10,8 @@ struct InvitePlayersView: View {
     let game: Game
     var onFinished: () -> Void
 
+    @State private var showLiveDashboard = false
+
     private var joinURL: URL {
         URL(string: "https://qourt-web.vercel.app/join/\(game.joinCode)")!
     }
@@ -54,7 +56,8 @@ struct InvitePlayersView: View {
                 }
                 .padding(.horizontal, 32)
 
-                Button("Done", action: onFinished)
+                Button("Done") { showLiveDashboard = true }
+                    .buttonStyle(.borderedProminent)
                     .padding(.top, 8)
             }
             .padding()
@@ -62,6 +65,15 @@ struct InvitePlayersView: View {
         .navigationTitle("Invite players")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        // Pushed on the SAME stack this screen is already on, rather than
+        // dismissing this sheet and asking a separate view to re-present
+        // something — that cross-modal handoff was the actual bug: a swipe
+        // to dismiss (or any dismissal that isn't this exact button) skips
+        // onFinished entirely, no matter how carefully the handoff is
+        // sequenced on the other end. This way there's nothing to skip.
+        .navigationDestination(isPresented: $showLiveDashboard) {
+            LiveDashboardView(game: game, onExitToGamesList: onFinished)
+        }
     }
 }
 

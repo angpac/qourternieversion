@@ -8,6 +8,7 @@
 -- ---------- enums ----------
 
 create type rotation_format as enum (
+  'manual',
   'king_of_the_court',
   'peg_board',
   'four_off_four_on',
@@ -50,6 +51,40 @@ create table profiles (
   created_at timestamptz not null default now()
 );
 
+-- ---------- clubs ----------
+-- Sit above games, optionally — a solo admin running a one-off pickup
+-- session never touches this table. A club owner (or anyone on its admin
+-- list) automatically administers every game linked to that club, with no
+-- need to add them to each game's own game_admins individually —
+-- is_game_admin() further down is what makes that inheritance automatic.
+--
+-- `sports` is an array, not a single value, because a club can run more
+-- than one sport (e.g. badminton nights and pickleball nights under the
+-- same club) — this is also the seed for eventually making the app
+-- multi-sport rather than badminton-only.
+
+create table clubs (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references profiles (id) on delete cascade,
+  name text not null,
+  sports text[] not null default '{}',
+  -- Same invite-code pattern as a single game's admin_invite_code, one
+  -- level up: redeeming it adds a club admin, who then automatically
+  -- admins every game under the club per is_game_admin()'s inheritance.
+  club_admin_invite_code text unique,
+  created_at timestamptz not null default now()
+);
+
+create index clubs_owner_id_idx on clubs (owner_id);
+
+-- club-level co-admins, same shape as game_admins
+create table club_admins (
+  club_id uuid not null references clubs (id) on delete cascade,
+  profile_id uuid not null references profiles (id) on delete cascade,
+  added_at timestamptz not null default now(),
+  primary key (club_id, profile_id)
+);
+
 -- ---------- games ----------
 
 create table games (
@@ -74,14 +109,22 @@ create table games (
   -- King of the Court uses one shared round timer across every court, not
   -- a per-match timer; round_minutes lives in format_settings.
   current_round_started_at timestamptz,
+  -- A short "get to your court" buffer after each rotation, before the
+  -- next round's timer starts counting down. While set and in the
+  -- future, the round hasn't started yet — every device just watches
+  -- this Date rather than needing per-second sync.
+  prep_ends_at timestamptz,
   -- Lets an admin tidy up My Games without losing anything — archiving
   -- only hides a game from the default list; the game, its roster,
   -- matches, and Game Summary stats are untouched and still reachable.
-  archived boolean not null default false
+  archived boolean not null default false,
+  -- Nullable: a game only belongs to a club if its admin chose to link it.
+  club_id uuid references clubs (id) on delete set null
 );
 
 create index games_owner_id_idx on games (owner_id);
 create index games_join_code_idx on games (join_code);
+create index games_club_id_idx on games (club_id);
 
 -- co-admins: lets more than one profile manage the same game
 create table game_admins (
@@ -103,7 +146,11 @@ create table courts (
   -- court created for a Challenge Court game, by convention), and the
   -- current defender's consecutive-win streak on it.
   is_challenge_court boolean not null default false,
-  win_streak int not null default 0
+  win_streak int not null default 0,
+  -- Null inherits the game's overall isDoubles setting; true/false forces
+  -- this one court to singles/doubles regardless — a club running mostly
+  -- doubles might dedicate one court to singles for stronger players.
+  singles_override boolean
 );
 
 create index courts_game_id_idx on courts (game_id);
@@ -156,6 +203,18 @@ create table apns_device_tokens (
 
 create index apns_device_tokens_profile_id_idx on apns_device_tokens (profile_id);
 
+-- One push token per player's currently-running Live Activity (Lock
+-- Screen / Dynamic Island). Only for the signed-in iPhone app — web
+-- guests and Watch don't run Live Activities. Unique per game_player_id
+-- since a player only ever has one running activity at a time; a new
+-- activity (e.g. rejoining a game) just replaces the old token.
+create table live_activity_tokens (
+  id uuid primary key default gen_random_uuid(),
+  game_player_id uuid not null references game_players (id) on delete cascade unique,
+  push_token text not null,
+  updated_at timestamptz not null default now()
+);
+
 -- ---------- web guests ----------
 -- players without the app or an account; scoped to one game + browser session
 
@@ -184,6 +243,16 @@ create table matches (
 
 create index matches_game_id_idx on matches (game_id);
 create index matches_court_id_idx on matches (court_id);
+
+-- Belt-and-suspenders against a race between two near-simultaneous
+-- auto-fill/start attempts: both could see a court as open before either
+-- write finished, and both insert a match for it. App-level guards
+-- reduce this but can't fully close a time-of-check-to-time-of-use race —
+-- this database constraint does. A second concurrent attempt now fails
+-- outright instead of silently creating a duplicate/empty match.
+create unique index one_active_match_per_court
+  on matches (court_id)
+  where status in ('in_progress', 'awaiting_confirmation');
 
 create table match_players (
   match_id uuid not null references matches (id) on delete cascade,
@@ -257,8 +326,58 @@ alter table match_players enable row level security;
 alter table tournaments enable row level security;
 alter table tournament_matches enable row level security;
 alter table announcements enable row level security;
+alter table clubs enable row level security;
+alter table club_admins enable row level security;
 
--- helper: is this user an admin (owner or co-admin) of the game?
+-- Direct column check (not a subquery through a function) so INSERT ...
+-- RETURNING can see the row it just created — the same fix already
+-- applied to "owners select their games"; a self-referential subquery
+-- can't see a row still being inserted.
+create policy "owners select their clubs"
+  on clubs for select
+  using (owner_id = auth.uid());
+
+create policy "owners update their clubs"
+  on clubs for update
+  using (owner_id = auth.uid())
+  with check (owner_id = auth.uid());
+
+create policy "owners delete their clubs"
+  on clubs for delete
+  using (owner_id = auth.uid());
+
+create policy "owners insert their clubs"
+  on clubs for insert
+  with check (owner_id = auth.uid());
+
+-- helper: is this user an admin (owner or co-admin) of the club?
+create or replace function is_club_admin(c_id uuid)
+returns boolean
+language sql
+security definer
+stable
+as $$
+  select exists (
+    select 1 from clubs where id = c_id and owner_id = auth.uid()
+    union
+    select 1 from club_admins where club_id = c_id and profile_id = auth.uid()
+  );
+$$;
+
+create policy "club admins select their clubs"
+  on clubs for select
+  using (is_club_admin(id));
+
+create policy "club admins manage club admins"
+  on club_admins for all
+  using (is_club_admin(club_id))
+  with check (is_club_admin(club_id));
+
+-- helper: is this user an admin (owner or co-admin) of the game? A game's
+-- admin set is the union of its own owner/game_admins AND (if it's linked
+-- to a club) that club's owner/club_admins — adding someone to
+-- club_admins once makes them an admin of every current and future game
+-- under that club automatically, no per-game game_admins row needed.
 create or replace function is_game_admin(g_id uuid)
 returns boolean
 language sql
@@ -269,6 +388,12 @@ as $$
     select 1 from games where id = g_id and owner_id = auth.uid()
     union
     select 1 from game_admins where game_id = g_id and profile_id = auth.uid()
+    union
+    select 1 from games g join clubs c on c.id = g.club_id
+      where g.id = g_id and c.owner_id = auth.uid()
+    union
+    select 1 from games g join club_admins ca on ca.club_id = g.club_id
+      where g.id = g_id and ca.profile_id = auth.uid()
   );
 $$;
 
@@ -434,6 +559,17 @@ create policy "players manage own device tokens"
   using (profile_id = auth.uid())
   with check (profile_id = auth.uid());
 
+alter table live_activity_tokens enable row level security;
+
+create policy "players manage own activity token"
+  on live_activity_tokens for all
+  using (exists (
+    select 1 from game_players where id = game_player_id and profile_id = auth.uid()
+  ))
+  with check (exists (
+    select 1 from game_players where id = game_player_id and profile_id = auth.uid()
+  ));
+
 -- ============================================================
 -- Joining a game (signed-in app players)
 -- ============================================================
@@ -566,6 +702,35 @@ end;
 $$;
 
 grant execute on function public.redeem_admin_invite(text) to authenticated;
+
+-- Same invite-code pattern as a single game's admin invite, one level up:
+-- anyone who redeems a club's code becomes a club admin, which — per
+-- is_game_admin()'s club-inheritance logic — immediately makes them an
+-- admin of every game under that club too, no per-game action needed.
+create or replace function public.redeem_club_admin_invite(p_invite_code text)
+returns clubs
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_club clubs;
+begin
+  select * into v_club from clubs where club_admin_invite_code = upper(p_invite_code);
+
+  if not found then
+    raise exception 'No club found with that invite code' using errcode = 'P0002';
+  end if;
+
+  insert into club_admins (club_id, profile_id)
+  values (v_club.id, auth.uid())
+  on conflict (club_id, profile_id) do nothing;
+
+  return v_club;
+end;
+$$;
+
+grant execute on function public.redeem_club_admin_invite(text) to authenticated;
 
 -- ============================================================
 -- Joining a game (web guests, no account)
@@ -737,6 +902,7 @@ begin
   return jsonb_build_object(
     'game_name', v_game.name,
     'game_format', v_game.format,
+    'is_doubles', v_game.is_doubles,
     'join_code', v_game.join_code,
     'player_status', v_player.status,
     'queue_position', v_queue_position,
@@ -960,6 +1126,8 @@ as $$
 declare
   v_picker game_players;
   v_court courts;
+  v_game games;
+  v_required int;
   v_new_match_id uuid;
 begin
   if auth.uid() is null then
@@ -983,17 +1151,6 @@ begin
     raise exception 'You are not the Picker right now' using errcode = 'P0003';
   end if;
 
-  if array_length(p_teammate_ids, 1) is distinct from 3 then
-    raise exception 'Pick exactly 3 teammates' using errcode = 'P0001';
-  end if;
-
-  if (
-    select count(*) from game_players
-    where id = any(p_teammate_ids) and game_id = p_game_id and status = 'queued'
-  ) <> 3 then
-    raise exception 'One of your picks is no longer available' using errcode = 'P0001';
-  end if;
-
   select c.* into v_court
   from courts c
   where c.game_id = p_game_id
@@ -1007,19 +1164,45 @@ begin
     raise exception 'No open court right now' using errcode = 'P0002';
   end if;
 
+  select * into v_game from games where id = p_game_id;
+
+  if v_game.status = 'paused' then
+    raise exception 'Game is paused' using errcode = 'P0002';
+  end if;
+
+  v_required := coalesce(
+    case v_court.singles_override when true then 1 when false then 2 else null end,
+    case when v_game.is_doubles then 2 else 1 end
+  );
+
+  if array_length(p_teammate_ids, 1) is distinct from (2 * v_required - 1) then
+    raise exception 'Pick exactly % player(s) for this court', (2 * v_required - 1) using errcode = 'P0001';
+  end if;
+
+  if (
+    select count(*) from game_players
+    where id = any(p_teammate_ids) and game_id = p_game_id and status = 'queued'
+  ) <> (2 * v_required - 1) then
+    raise exception 'One of your picks is no longer available' using errcode = 'P0001';
+  end if;
+
   insert into matches (game_id, court_id, status)
   values (p_game_id, v_court.id, 'in_progress')
   returning id into v_new_match_id;
 
   insert into match_players (match_id, game_player_id, team)
-  values
-    (v_new_match_id, v_picker.id, 'a'),
-    (v_new_match_id, p_teammate_ids[1], 'a'),
-    (v_new_match_id, p_teammate_ids[2], 'b'),
-    (v_new_match_id, p_teammate_ids[3], 'b');
+  values (v_new_match_id, v_picker.id, 'a');
+
+  if v_required > 1 then
+    insert into match_players (match_id, game_player_id, team)
+    select v_new_match_id, unnest(p_teammate_ids[1 : v_required - 1]), 'a';
+  end if;
+
+  insert into match_players (match_id, game_player_id, team)
+  select v_new_match_id, unnest(p_teammate_ids[v_required : 2 * v_required - 1]), 'b';
 
   update game_players set status = 'on_court'
-  where id in (v_picker.id, p_teammate_ids[1], p_teammate_ids[2], p_teammate_ids[3]);
+  where id = v_picker.id or id = any(p_teammate_ids);
 
   return v_new_match_id;
 end;
@@ -1041,6 +1224,8 @@ declare
   v_guest web_guests;
   v_picker game_players;
   v_court courts;
+  v_game games;
+  v_required int;
   v_new_match_id uuid;
 begin
   select * into v_guest from web_guests where session_token = p_session_token::text;
@@ -1064,17 +1249,6 @@ begin
     raise exception 'You are not the Picker right now' using errcode = 'P0003';
   end if;
 
-  if array_length(p_teammate_ids, 1) is distinct from 3 then
-    raise exception 'Pick exactly 3 teammates' using errcode = 'P0001';
-  end if;
-
-  if (
-    select count(*) from game_players
-    where id = any(p_teammate_ids) and game_id = v_guest.game_id and status = 'queued'
-  ) <> 3 then
-    raise exception 'One of your picks is no longer available' using errcode = 'P0001';
-  end if;
-
   select c.* into v_court
   from courts c
   where c.game_id = v_guest.game_id
@@ -1088,19 +1262,45 @@ begin
     raise exception 'No open court right now' using errcode = 'P0002';
   end if;
 
+  select * into v_game from games where id = v_guest.game_id;
+
+  if v_game.status = 'paused' then
+    raise exception 'Game is paused' using errcode = 'P0002';
+  end if;
+
+  v_required := coalesce(
+    case v_court.singles_override when true then 1 when false then 2 else null end,
+    case when v_game.is_doubles then 2 else 1 end
+  );
+
+  if array_length(p_teammate_ids, 1) is distinct from (2 * v_required - 1) then
+    raise exception 'Pick exactly % player(s) for this court', (2 * v_required - 1) using errcode = 'P0001';
+  end if;
+
+  if (
+    select count(*) from game_players
+    where id = any(p_teammate_ids) and game_id = v_guest.game_id and status = 'queued'
+  ) <> (2 * v_required - 1) then
+    raise exception 'One of your picks is no longer available' using errcode = 'P0001';
+  end if;
+
   insert into matches (game_id, court_id, status)
   values (v_guest.game_id, v_court.id, 'in_progress')
   returning id into v_new_match_id;
 
   insert into match_players (match_id, game_player_id, team)
-  values
-    (v_new_match_id, v_picker.id, 'a'),
-    (v_new_match_id, p_teammate_ids[1], 'a'),
-    (v_new_match_id, p_teammate_ids[2], 'b'),
-    (v_new_match_id, p_teammate_ids[3], 'b');
+  values (v_new_match_id, v_picker.id, 'a');
+
+  if v_required > 1 then
+    insert into match_players (match_id, game_player_id, team)
+    select v_new_match_id, unnest(p_teammate_ids[1 : v_required - 1]), 'a';
+  end if;
+
+  insert into match_players (match_id, game_player_id, team)
+  select v_new_match_id, unnest(p_teammate_ids[v_required : 2 * v_required - 1]), 'b';
 
   update game_players set status = 'on_court'
-  where id in (v_picker.id, p_teammate_ids[1], p_teammate_ids[2], p_teammate_ids[3]);
+  where id = v_picker.id or id = any(p_teammate_ids);
 
   return v_new_match_id;
 end;
@@ -1192,7 +1392,11 @@ security definer
 set search_path = public
 as $$
 begin
-  perform public.notify_send_push(jsonb_build_object('type', 'match_assigned', 'match_player_id', new.id));
+  perform public.notify_send_push(jsonb_build_object(
+    'type', 'match_assigned',
+    'match_id', new.match_id,
+    'game_player_id', new.game_player_id
+  ));
   return new;
 end;
 $$;

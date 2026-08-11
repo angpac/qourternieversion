@@ -17,11 +17,22 @@ struct RotationFormatSettingsView: View {
         Form {
             Section(viewModel.format.title) {
                 switch viewModel.format {
+                case .manual:
+                    Text("No settings needed, you'll build every match yourself from the queue.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+
                 case .kingOfTheCourt:
                     Stepper(
                         "Round length: \(viewModel.formatSettings.roundMinutes) min",
                         value: $viewModel.formatSettings.roundMinutes,
                         in: 3...20
+                    )
+                    Stepper(
+                        "Prep time before each round: \(viewModel.formatSettings.prepSeconds) sec",
+                        value: $viewModel.formatSettings.prepSeconds,
+                        in: 0...60,
+                        step: 5
                     )
                     Toggle("Auto-rotate when timer ends", isOn: $viewModel.formatSettings.autoRotate)
 
@@ -64,11 +75,11 @@ struct RotationFormatSettingsView: View {
 
             if viewModel.format.isTournament {
                 Section {
-                    Text("Once players have joined, set up the bracket from the Live Dashboard — seed players, then start matches court by court.")
+                    Text("Once players have joined, set up the bracket from the Live Dashboard: seed players, then start matches court by court.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
-            } else {
+            } else if viewModel.format != .manual {
                 Section {
                     Toggle("Manually match players", isOn: $viewModel.formatSettings.manualMatching)
                 } footer: {

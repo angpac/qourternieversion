@@ -11,7 +11,7 @@ settings:
     DEVELOPMENT_TEAM: 67YBGP3A84
     SWIFT_VERSION: 5.0
     MARKETING_VERSION: 1.0
-    CURRENT_PROJECT_VERSION: 1
+    CURRENT_PROJECT_VERSION: 42
 
 targets:
   Qourt:
@@ -19,6 +19,7 @@ targets:
     platform: iOS
     sources:
       - path: Qourt
+      - path: QourtShared
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: net.criers.Qourt
@@ -28,6 +29,8 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_NSCameraUsageDescription: "Qourt uses the camera to scan a game's QR code so you can join instantly."
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Qourt uses your location to suggest nearby courts and sports centers when creating a game."
+        INFOPLIST_KEY_NSSupportsLiveActivities: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         CODE_SIGN_ENTITLEMENTS: Qourt/Qourt.entitlements
@@ -35,8 +38,24 @@ targets:
       - target: "Qourt Watch App"
         embed: true
         codeSign: true
+      - target: QourtWidgetExtension
+        embed: true
+        codeSign: true
       - package: Supabase
         product: Supabase
+
+  QourtWidgetExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: QourtWidgetExtension
+      - path: QourtShared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: net.criers.Qourt.widget
+        INFOPLIST_FILE: QourtWidgetExtension/Info.plist
+        SKIP_INSTALL: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
 
   "Qourt Watch App":
     type: application

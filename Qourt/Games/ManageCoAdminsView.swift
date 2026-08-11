@@ -15,19 +15,19 @@ struct ManageCoAdminsView: View {
     var body: some View {
         List {
             Section {
-                Text(viewModel.game.adminInviteCode ?? "—")
+                Text(viewModel.game.adminInviteCode ?? "None yet")
                     .font(.system(.title2, design: .monospaced, weight: .bold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
                 if let code = viewModel.game.adminInviteCode {
-                    ShareLink(item: "Join me as a co-admin on Qourt for \"\(viewModel.game.name)\" — enter this code in the app: \(code)") {
+                    ShareLink(item: "Join me as a co-admin on Qourt for \"\(viewModel.game.name)\". Enter this code in the app: \(code)") {
                         Label("Share invite code", systemImage: "square.and.arrow.up")
                     }
                 }
             } header: {
                 Text("Co-admin invite code")
             } footer: {
-                Text("Anyone with this code can help you manage this game — start matches, edit the roster, send announcements. Keep it separate from the player join code.")
+                Text("Anyone with this code can help you manage this game: start matches, edit the roster, send announcements. Keep it separate from the player join code.")
             }
 
             Section("Current co-admins") {

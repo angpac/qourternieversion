@@ -2,6 +2,69 @@
 
 Running list of everything to manually verify, updated as features are built. Test on a real device where possible (Sign In With Apple, camera/QR, Watch pairing all need one).
 
+## Court card clarity (new, needs focused testing)
+- [ ] An open court now shows a dashed border, a "+" icon, and "Tap to assign players" instead of just the word "Open" — should read as clearly tappable
+- [ ] An active match shows both teams on one line, e.g. "Kiko & Sam vs Mika & Jo", instead of three stacked lines
+- [ ] A singles match still reads correctly as "Name vs Name" on one line
+- [ ] Long names on a doubles match wrap to a second line instead of getting cut off
+
+## Bug fix: courts stuck "occupied" with no players (fixed, needs verification)
+- [ ] **Recovery for the exact issue reported**: open any court showing "No players, tap to fix" → the sheet shows a clear red error card and a "Clear court & assign players" button instead of a blank scoreboard
+- [ ] Tapping "Clear court & assign players" is now one step: it clears the broken match AND immediately opens the team-builder for that same court, no need to close and re-tap the court a second time
+- [ ] Going forward, `startMatch` now hard-refuses to create a match with an empty team under any circumstances, confirm this by trying to break it: rapidly tapping "Start round" / adding walk-ins / toggling auto-fill while courts are still loading shouldn't ever produce an empty-looking court again
+- [ ] Auto-fill re-checks each court immediately before writing to it (not just once at the start of the pass), reduces risk of two near-simultaneous triggers double-booking or racing on the same court
+
+## Mid-match player substitution (new, needs focused testing)
+- [ ] Court Detail (tap an active court) → "Players on court" lists all 4 (or 2, for singles/lanes) players individually with a "Sub" button each
+- [ ] Tapping "Sub" shows the current queue to pick a replacement from; empty queue shows a clear empty state, not a crash
+- [ ] Picking a replacement shows a confirmation dialog naming both players and explicitly framing this as an exception (not routine pairing changes) before anything happens
+- [ ] Confirming: the outgoing player goes to the back of the queue, the incoming player takes their spot on court, the match/score/court are otherwise untouched
+- [ ] Works mid-match with a non-zero score, the score is preserved exactly through the substitution
+- [ ] Cancelling at either step (queue picker or confirmation) makes no changes
+- [ ] Works the same across every rotation format, including on a Challenge Court/Kingminton lane and inside a King of the Court round in progress
+- [ ] The substituted-in player's own Live Status view updates to show them on court within a couple seconds; the substituted-out player's view updates to show them queued
+
+## Manage courts: rename + reorder (new, needs focused testing)
+- [ ] Live Dashboard toolbar → "Manage courts" → tapping a court opens a rename prompt, saves and reflects immediately on the dashboard
+- [ ] Any format: courts can always be renamed, regardless of format or whether a match is in progress
+- [ ] Non-King of the Court, non-Kingminton format: "Edit" button appears, drag handles let you reorder courts freely
+- [ ] King of the Court, no round currently active: reordering works, and the footer explains that order determines ladder rank (bottom to top)
+- [ ] King of the Court, a round **is** currently active: reordering is disabled with an explanatory footer, no "Edit" button shown, renaming still works
+- [ ] Half-Court Kingminton (lane-split courts): reordering is disabled entirely (lanes share position pairwise), renaming still works per-lane
+- [ ] Reordering persists correctly after leaving and reopening "Manage courts", and after a full app relaunch
+
+## Queue copy: "matches ahead" hint (new, needs focused testing)
+- [ ] Doubles game, queued at position 5 or higher: a second line appears under "You're #N in line" like "About 1 more match before yours"
+- [ ] Singles game: the same hint uses a match size of 2, not 4
+- [ ] Positions 1 to 4 in a doubles game (or 1 to 2 in singles) show no extra line, since you're already in the next match
+- [ ] Peg Board never shows this hint, on iOS or web, since the Picker pulls from a pool rather than strict queue order
+- [ ] Web guest client shows the identical hint and wording as iOS
+
+## Roster: matches-played count (new, needs focused testing)
+- [ ] Admin's Roster shows "N played" next to each player, reflecting only confirmed matches in this specific ongoing game (not their all-time history across other games)
+- [ ] The count updates live within a couple seconds of a match being confirmed, no manual refresh needed
+- [ ] A player who hasn't played yet this game shows "0 played", not blank or an error
+- [ ] Use this to sanity-check that one player didn't rack up way more court time than another during a session, this is the whole point of the feature
+
+## Manual rotation format (new, needs focused testing)
+- [ ] "Manual" is the first option in the Rotation format list on Create a Game, above King of the Court
+- [ ] Selecting Manual shows no format-specific settings and no "Manually match players" toggle (it's implied, not optional)
+- [ ] A Manual game's courts never auto-fill from the queue, even with several players waiting, admin always taps in and builds each match by hand
+- [ ] After a match ends, all players return to the back of the queue, same as Four Off Four On's generic behavior, so the admin can immediately build the next match manually
+
+## Copy audit: no em dashes (new, spot-check)
+- [ ] Spot-check a handful of screens (Create a Game, Roster/Co-admin invite screens, Tournament setup, error banners) to confirm punctuation reads naturally with the em dashes removed, nothing was left awkwardly worded
+- Note: this pass covered user-facing text only (`Text`/`Label`/error messages/share text) across iOS, watchOS, the widget extension, and the web app. Code comments were left as-is since they're not shown to anyone.
+
+## Live Activities — Lock Screen / Dynamic Island (new, needs a real device — Simulator support is unreliable)
+- [ ] Join a game as a player → a Live Activity appears showing "You're #N in line" on the Lock Screen and (iPhone 14 Pro+) the Dynamic Island
+- [ ] Getting assigned to a match updates the same activity to show the court, teammate(s) vs opponent(s), and starts the score at 0–0 — check this specifically **while the app is backgrounded**, since that's the whole point (relies on the push-to-update path, not just the app's own local update)
+- [ ] While the match is in progress and the app is foregrounded, the activity's score updates live as the admin adjusts it
+- [ ] Stepping out / leaving the game / the match ending eventually clears the activity (may take a moment — ActivityKit doesn't dismiss instantly on every state change in this v1)
+- [ ] Dynamic Island compact/minimal views show a sensible icon + score-or-queue-number at a glance; expanding it (long-press) shows the full detail
+- [ ] Denying "Allow Live Activities" (or having it off in Settings) doesn't break anything else — app still fully usable, just no Live Activity
+- [ ] **Known limitation**: only the "you're up!" match-assignment moment pushes a Live Activity update while backgrounded — queue position shifting as others join/leave, and live score changes, only update the activity while your own app happens to be in the foreground. Full live fidelity in the background would need additional DB triggers (queue position changes, score changes), deliberately not built yet — see `ROADMAP.md`.
+
 ## Push notifications (new, needs focused testing — one setup step outstanding)
 - [ ] **Outstanding before iOS/Watch push can actually deliver**: create an APNs Auth Key in the Apple Developer portal (Certificates, IDs & Profiles → Keys → +, enable Apple Push Notifications service) and send the Key ID + downloaded `.p8` file — I'll set them as `APNS_KEY_ID` / `APNS_AUTH_KEY` Supabase secrets. Until then, APNs sends silently no-op (logged, not crashed); Web Push already works end-to-end since those VAPID keys are self-generated.
 - [ ] First sign-in on iPhone prompts for notification permission; accepting registers a device token (check `apns_device_tokens` table has a row for that profile)
@@ -40,8 +103,8 @@ Running list of everything to manually verify, updated as features are built. Te
 - [ ] Admin's My Games list is grouped into "Ongoing" and "Ended" sections instead of one flat list
 - [ ] Tapping an **ongoing** game opens its live dashboard/bracket as before
 - [ ] Tapping an **ended** game opens Game Summary directly, not a dead dashboard
-- [ ] Swipe an ended game → "Archive" → it disappears from the Ended section and collapses into a "Show N archived games" row
-- [ ] Tapping "Show archived" reveals them; swipe → "Unarchive" moves one back to the Ended section
+- [ ] Swipe an ended game → "Archive" → it disappears from the Ended section and collapses into an "Archived (N)" disclosure row
+- [ ] Tapping "Archived (N)" expands it with a chevron; swipe → "Unarchive" moves one back to the Ended section; tapping the row again collapses it back down
 - [ ] Archiving a game never deletes anything — its roster, matches, and Game Summary stats are all still exactly correct after archiving/unarchiving
 - [ ] Player role's My Games list is unaffected (still a flat list — archiving is admin-only)
 - [ ] A co-admin sees the same grouping/archive behavior as the owner for a shared game
@@ -54,6 +117,18 @@ Running list of everything to manually verify, updated as features are built. Te
 - [ ] Empty state shown when no templates saved yet
 - [ ] Templates are per-admin — a different admin account doesn't see someone else's saved templates
 - [ ] "Create a game" (not from a template) always starts from a clean, default form even after previously using a template in the same session
+
+## Clubs (new, needs focused testing — schema groundwork for multi-admin/multi-sport)
+- [ ] Settings → "Manage Clubs" (admin role only — not shown for Play role)
+- [ ] Create a club: name + pick from common sports (Badminton, Pickleball, etc.) + a custom "Other" sport — all save correctly
+- [ ] A brand-new admin account with no clubs sees the empty state, not an error
+- [ ] Tapping a club shows its sports, its club admin invite code (share-able), and current club admins (empty at first)
+- [ ] A second account → Settings → Manage Clubs → "+" → "Join as club admin" → enter the code → the club appears in their list too
+- [ ] **Key behavior**: once someone is a club admin, they automatically administer every game already linked to that club — without being added to that specific game's own co-admin list. Verify by creating a game under the club as the owner, then confirming the newly-joined club admin can open and fully manage that game (start matches, roster, etc.) immediately.
+- [ ] A club admin removed from "Club admins" immediately loses access to every game under that club (not just new ones)
+- [ ] Create a game → if you belong to at least one club, a "Club" picker appears (defaulting to "None") to optionally link the new game to it; if you belong to no clubs, the picker doesn't show at all
+- [ ] A game created with no club selected behaves exactly as before — no club picker ever appears again for that game, no regression to solo one-off games
+- [ ] **Known scope for now**: no persistent club member roster yet — players still join each game individually by code/QR even under a club. That's flagged as a deliberate next step, not a bug.
 
 ## Co-admin management (new, needs focused testing)
 - [ ] Live Dashboard → "Co-admins" shows a share-able invite code, separate from the player join code
@@ -89,6 +164,7 @@ Running list of everything to manually verify, updated as features are built. Te
 - [ ] "Manually match players" toggle saves
 - [ ] Courts are auto-created matching the court count chosen
 - [ ] Lands on Invite Players after creation (QR, join code, share link all present)
+- [ ] **New**: tapping "Done" on Invite Players drops the admin straight into that game's own Live Dashboard, not back on the My Games list, on both iPhone (pushes in) and iPad (selects it in the split view)
 
 ## Admin: Auto-fill vs manual matching (new, needs focused testing)
 - [ ] Game created with "Manually match players" **off** (default): as soon as enough players are queued to fill an open court, a match starts there automatically, no admin tap needed
@@ -184,6 +260,14 @@ Running list of everything to manually verify, updated as features are built. Te
 - [ ] Report score, skip turn, leave game, last-match result — all work same as iOS
 - [ ] Announcement banner shows live
 - [ ] Joining an **ended** game shows a clear error, not a crash
+
+## iPad (new, needs focused testing)
+- [ ] My Games on iPad shows a real two-column split view — game list on the left, dashboard/summary/bracket on the right — not just a scaled-up iPhone screen
+- [ ] Rotating iPad to portrait/narrower multitasking collapses to a single column that behaves like iPhone (tap a game → it pushes in); rotating back to landscape/full-screen restores the two-column layout
+- [ ] Tapping a game in the sidebar updates the detail pane without losing your place in the list
+- [ ] "Create a game" / "Start from a template" / "Join as co-admin" now open as sheets (not pushes) — each has a working Cancel button, and finishing/cancelling returns you to exactly where you were
+- [ ] The Live Dashboard's courts grid already uses the extra iPad width automatically (more courts per row) — confirm it looks right with both few and many courts
+- [ ] Nothing regressed on iPhone — My Games still behaves exactly as a single push-navigation stack (this was true before the iPad work and must still be true)
 
 ## Cross-cutting
 - [ ] Same game, one browser tab as "player" + iPhone as "admin" simultaneously — confirms realtime end-to-end

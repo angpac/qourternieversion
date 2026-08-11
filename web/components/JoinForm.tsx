@@ -43,7 +43,7 @@ export default function JoinForm({ initialCode = "" }: { initialCode?: string })
         }
         const preview = data as GamePreview;
         if (preview.status === "ended") {
-          setPreviewError("This game has ended — the code no longer works.");
+          setPreviewError("This game has ended. The code no longer works.");
           return;
         }
         setGamePreview(preview);
@@ -86,7 +86,7 @@ export default function JoinForm({ initialCode = "" }: { initialCode?: string })
     <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4">
       {!isEditingCode && (
         <p className="text-center text-sm text-zinc-600">
-          You scanned the code — just add your name below to join.
+          You scanned the code, just add your name below to join.
         </p>
       )}
 

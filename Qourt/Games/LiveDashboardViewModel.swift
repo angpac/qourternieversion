@@ -18,6 +18,7 @@ final class LiveDashboardViewModel {
     var isLoading = true
     var gameStatus: String
     var roundStartedAt: Date?
+    var prepEndsAt: Date?
     var isRotating = false
     var isConnected = true
 
@@ -33,11 +34,72 @@ final class LiveDashboardViewModel {
     }
 
     var hasEnded: Bool { gameStatus == "ended" }
+    var isPaused: Bool { gameStatus == "paused" }
     var isKingOfTheCourt: Bool { game.format == .kingOfTheCourt }
+
+    var canAutoAssign: Bool {
+        !hasEnded && !isPaused && game.format != .pegBoard && game.format != .manual
+            && !queue.isEmpty && courts.contains { activeMatches[$0.id] == nil }
+    }
 
     var roundEndsAt: Date? {
         guard let roundStartedAt else { return nil }
         return roundStartedAt.addingTimeInterval(TimeInterval(game.roundMinutes * 60))
+    }
+
+    /// Reordering a King of the Court ladder mid-round would scramble
+    /// whoever's currently ranked where, so it's only allowed between
+    /// rounds. Lane-split courts (Kingminton) share position pairwise
+    /// between their two lanes, so free reordering doesn't make sense
+    /// there either — renaming is always fine regardless.
+    var canReorderCourts: Bool {
+        !courts.contains { $0.isLaneSplit } && !(isKingOfTheCourt && roundStartedAt != nil)
+    }
+
+    @MainActor
+    func renameCourt(_ court: Court, to newName: String) async {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        do {
+            try await supabase.from("courts")
+                .update(["name": trimmed])
+                .eq("id", value: court.id)
+                .execute()
+            await loadAll()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Nil restores the game's overall doubles/singles setting for this
+    /// court; true forces singles, false forces doubles.
+    @MainActor
+    func setCourtFormat(_ court: Court, singlesOverride: Bool?) async {
+        do {
+            let value: AnyJSON = singlesOverride.map { .bool($0) } ?? .null
+            try await supabase.from("courts")
+                .update(["singles_override": value])
+                .eq("id", value: court.id)
+                .execute()
+            await loadAll()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    func reorderCourts(_ newOrder: [Court]) async {
+        do {
+            for (index, court) in newOrder.enumerated() where court.position != index {
+                try await supabase.from("courts")
+                    .update(["position": index])
+                    .eq("id", value: court.id)
+                    .execute()
+            }
+            await loadAll()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     @MainActor
@@ -48,6 +110,36 @@ final class LiveDashboardViewModel {
                 .eq("id", value: game.id)
                 .execute()
             gameStatus = "ended"
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// A rain delay, a break, whatever — pausing freezes rotation (no King
+    /// of the Court round/prep timer expiry, no new matches starting) but
+    /// doesn't touch anything already on court: those matches just keep
+    /// being played and scored manually until the admin resumes.
+    @MainActor
+    func pauseGame() async {
+        do {
+            try await supabase.from("games")
+                .update(["status": "paused"])
+                .eq("id", value: game.id)
+                .execute()
+            gameStatus = "paused"
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    func resumeGame() async {
+        do {
+            try await supabase.from("games")
+                .update(["status": "live"])
+                .eq("id", value: game.id)
+                .execute()
+            gameStatus = "live"
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -72,77 +164,107 @@ final class LiveDashboardViewModel {
         connectionObserverTask = nil
     }
 
-    /// Checks once a second whether the King of the Court round has expired.
-    /// There's no server-side scheduler in this project, so automatic
-    /// rotation only fires while an admin's dashboard is open — the client
-    /// that notices expiry performs it. Manual "End round now" covers the
-    /// gap when no dashboard is open.
+    /// Checks once a second whether the King of the Court round (or the
+    /// prep buffer before it) has expired. There's no server-side
+    /// scheduler in this project, so automatic rotation only fires while
+    /// an admin's dashboard is open — the client that notices expiry
+    /// performs it. Manual "End round now" covers the gap when no
+    /// dashboard is open.
     private func startRoundTimerLoop() {
         roundTimerTask?.cancel()
         roundTimerTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
                 guard let self, !Task.isCancelled else { return }
+                await self.checkPrepExpiry()
                 await self.checkRoundExpiry()
             }
         }
     }
 
     @MainActor
-    private func checkRoundExpiry() async {
-        guard game.autoRotate, !isRotating, let roundEndsAt, Date() >= roundEndsAt else { return }
-        await rotateKingOfTheCourt()
+    private func checkPrepExpiry() async {
+        guard !isPaused, let prepEndsAt, Date() >= prepEndsAt else { return }
+        await startRound()
     }
 
     @MainActor
+    private func checkRoundExpiry() async {
+        guard !isPaused, game.autoRotate, !isRotating, prepEndsAt == nil, let roundEndsAt, Date() >= roundEndsAt else { return }
+        await rotateKingOfTheCourt()
+    }
+
+    /// Pull-to-refresh and realtime-triggered reloads can overlap — a
+    /// realtime callback firing while `.refreshable`'s task is still
+    /// in-flight can get the older one cancelled by SwiftUI mid-await.
+    /// The old `try? ... ?? []` fetches treated that cancellation exactly
+    /// like "confirmed zero rows," which silently blanked out courts/queue
+    /// that genuinely exist the instant a refresh got interrupted. Now a
+    /// cancelled load is caught explicitly and just walks away without
+    /// touching state — whichever load actually completes owns the truth.
+    @MainActor
     func loadAll() async {
         isLoading = true
-        async let courtsFetch: [Court] = (try? await supabase.from("courts")
-            .select()
-            .eq("game_id", value: game.id)
-            .order("position")
-            .execute()
-            .value) ?? []
+        do {
+            async let courtsFetch: [Court] = supabase.from("courts")
+                .select()
+                .eq("game_id", value: game.id)
+                .order("position")
+                .execute()
+                .value
 
-        async let queueFetch: [GamePlayer] = (try? await supabase.from("game_players")
-            .select()
-            .eq("game_id", value: game.id)
-            .eq("status", value: PlayerStatus.queued.rawValue)
-            .order("queue_position", ascending: true, nullsFirst: false)
-            .order("joined_at", ascending: true)
-            .execute()
-            .value) ?? []
+            async let queueFetch: [GamePlayer] = supabase.from("game_players")
+                .select()
+                .eq("game_id", value: game.id)
+                .eq("status", value: PlayerStatus.queued.rawValue)
+                .order("queue_position", ascending: true, nullsFirst: false)
+                .order("joined_at", ascending: true)
+                .execute()
+                .value
 
-        async let rosterFetch: [GamePlayer] = (try? await supabase.from("game_players")
-            .select()
-            .eq("game_id", value: game.id)
-            .neq("status", value: PlayerStatus.removed.rawValue)
-            .order("joined_at", ascending: true)
-            .execute()
-            .value) ?? []
+            async let rosterFetch: [GamePlayer] = supabase.from("game_players")
+                .select()
+                .eq("game_id", value: game.id)
+                .neq("status", value: PlayerStatus.removed.rawValue)
+                .order("joined_at", ascending: true)
+                .execute()
+                .value
 
-        courts = await courtsFetch
-        queue = await queueFetch
-        fullRoster = await rosterFetch
-        await loadActiveMatches()
-        if isKingOfTheCourt {
-            await refreshRoundStartedAt()
+            let (fetchedCourts, fetchedQueue, fetchedRoster) = try await (courtsFetch, queueFetch, rosterFetch)
+            courts = fetchedCourts
+            queue = fetchedQueue
+            fullRoster = fetchedRoster
+
+            await loadActiveMatches()
+            if isKingOfTheCourt {
+                await refreshRoundStartedAt()
+            }
+            isLoading = false
+        } catch is CancellationError {
+            isLoading = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
         }
-        isLoading = false
-        await tryAutoFillOpenCourts()
     }
 
     private var isAutoFilling = false
 
-    /// The "manually match players" toggle from game setup: when it's off
-    /// (the default), an open court with enough players queued should fill
-    /// itself instead of sitting empty until an admin taps it — that's the
-    /// promise made on the setup screen ("the app pairing players
-    /// automatically"). Peg Board is exempt: its Picker is the one who
-    /// builds each match, never an automatic process.
+    private static let skillRank: [String: Int] = ["Beginner": 0, "Intermediate": 1, "Advanced": 2]
+
+    /// Explicit, admin-triggered fill for every open court that has enough
+    /// players queued — no longer runs automatically on every load (players
+    /// join and just sit in the queue until an admin taps a court to
+    /// hand-pick, or taps this to fill everything at once). Players are
+    /// grouped into each match with a snake draft (best, worst, worst,
+    /// best, ...) by skill level so the two teams in a match end up close
+    /// in average skill instead of whichever four happened to queue first.
+    /// Peg Board is exempt: its Picker is the one who builds each match,
+    /// never an automatic process. Manual is exempt unconditionally: it's
+    /// never auto-fillable by design.
     @MainActor
-    private func tryAutoFillOpenCourts() async {
-        guard !isAutoFilling, !game.manualMatching, game.format != .pegBoard, !hasEnded else { return }
+    func autoAssignOpenCourts() async {
+        guard !isAutoFilling, game.format != .pegBoard, game.format != .manual, !hasEnded, !isPaused else { return }
 
         let openCourts = courts
             .filter { activeMatches[$0.id] == nil }
@@ -152,27 +274,45 @@ final class LiveDashboardViewModel {
         isAutoFilling = true
         defer { isAutoFilling = false }
 
-        var availableQueue = queue
+        var availableQueue = queue.sorted {
+            (Self.skillRank[$0.skillLevel] ?? 0) > (Self.skillRank[$1.skillLevel] ?? 0)
+        }
         for court in openCourts {
             let required = playersPerTeam(for: court)
-            guard availableQueue.count >= required * 2 else { break }
-            let teamA = Array(availableQueue.prefix(required))
-            let teamB = Array(availableQueue.dropFirst(required).prefix(required))
+            guard required > 0, availableQueue.count >= required * 2 else { break }
+            // Re-check against the latest state right before writing —
+            // an earlier iteration's startMatch() already reloaded
+            // activeMatches, so this catches a court that got filled by
+            // something else in the meantime instead of double-booking it.
+            guard activeMatches[court.id] == nil else { continue }
+            let group = Array(availableQueue.prefix(required * 2))
             availableQueue.removeFirst(required * 2)
+
+            var teamA: [GamePlayer] = []
+            var teamB: [GamePlayer] = []
+            for (index, player) in group.enumerated() {
+                let aFirst = (index / 2) % 2 == 0
+                let pickA = (index % 2 == 0) == aFirst
+                if pickA { teamA.append(player) } else { teamB.append(player) }
+            }
             await startMatch(court: court, teamA: teamA, teamB: teamB)
         }
     }
 
     @MainActor
     private func refreshRoundStartedAt() async {
-        struct RoundRow: Decodable { let current_round_started_at: Date? }
+        struct RoundRow: Decodable {
+            let current_round_started_at: Date?
+            let prep_ends_at: Date?
+        }
         let row: RoundRow? = try? await supabase.from("games")
-            .select("current_round_started_at")
+            .select("current_round_started_at, prep_ends_at")
             .eq("id", value: game.id)
             .single()
             .execute()
             .value
         roundStartedAt = row?.current_round_started_at
+        prepEndsAt = row?.prep_ends_at
     }
 
     @MainActor
@@ -212,6 +352,8 @@ final class LiveDashboardViewModel {
                 result[courtId] = MatchWithPlayers(match: match, teamA: teamA, teamB: teamB)
             }
             activeMatches = result
+        } catch is CancellationError {
+            // Superseded by a newer load — leave activeMatches as-is.
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -250,7 +392,7 @@ final class LiveDashboardViewModel {
             }
         }
 
-        await channel.subscribe()
+        try? await channel.subscribeWithError()
     }
 
     @MainActor
@@ -290,6 +432,42 @@ final class LiveDashboardViewModel {
         }
     }
 
+    /// Swaps one player out of an already-in-progress match for someone
+    /// from the queue, keeping the match, court, and score exactly as they
+    /// are — meant for exceptions (an injury, someone has to leave
+    /// mid-match), not routine pairing changes. The outgoing player goes
+    /// back to the end of the queue, same as a normal match ending; if
+    /// they're actually done for the day rather than just sitting out this
+    /// one, that's a separate Roster action.
+    @MainActor
+    func substitutePlayer(in match: MatchWithPlayers, outgoing: GamePlayer, incoming: GamePlayer) async {
+        do {
+            try await supabase.from("match_players")
+                .update(["game_player_id": incoming.id.uuidString])
+                .eq("match_id", value: match.match.id)
+                .eq("game_player_id", value: outgoing.id)
+                .execute()
+
+            let backOfQueue = await nextQueuePosition()
+            try await supabase.from("game_players")
+                .update([
+                    "status": AnyJSON.string(PlayerStatus.queued.rawValue),
+                    "queue_position": AnyJSON.integer(backOfQueue)
+                ])
+                .eq("id", value: outgoing.id)
+                .execute()
+
+            try await supabase.from("game_players")
+                .update(["status": PlayerStatus.onCourt.rawValue])
+                .eq("id", value: incoming.id)
+                .execute()
+
+            await loadAll()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     private func nextQueuePosition() async -> Int {
         struct PositionRow: Decodable { let queue_position: Int? }
         let rows: [PositionRow] = (try? await supabase.from("game_players")
@@ -308,14 +486,23 @@ final class LiveDashboardViewModel {
 
     /// A lane-split court (Half-Court Kingminton) is always 1v1 singles,
     /// regardless of whether the game overall was set up as doubles.
+    /// Otherwise an admin's explicit per-court override wins over the
+    /// game's overall setting — that's the whole point of "mixed" courts.
     func playersPerTeam(for court: Court) -> Int {
-        court.isLaneSplit ? 1 : playersPerTeam
+        if court.isLaneSplit { return 1 }
+        if let override = court.singlesOverride { return override ? 1 : 2 }
+        return playersPerTeam
     }
 
     @MainActor
     func startMatch(court: Court, teamA: [GamePlayer], teamB: [GamePlayer]) async {
         let required = playersPerTeam(for: court)
-        guard teamA.count == required, teamB.count == required else { return }
+        // Hard requirement, not just "the counts happen to match": a match
+        // with empty teams must never be writable, regardless of how this
+        // got called — this is what stops a stray required == 0 or a
+        // disabled-button bypass from creating a court that's stuck
+        // "occupied" by nobody.
+        guard !isPaused, required > 0, !teamA.isEmpty, !teamB.isEmpty, teamA.count == required, teamB.count == required else { return }
 
         struct NewMatch: Encodable {
             let game_id: UUID
@@ -533,10 +720,42 @@ final class LiveDashboardViewModel {
         do {
             let now = Date()
             try await supabase.from("games")
-                .update(["current_round_started_at": ISO8601DateFormatter().string(from: now)])
+                .update([
+                    "current_round_started_at": AnyJSON.string(ISO8601DateFormatter().string(from: now)),
+                    "prep_ends_at": AnyJSON.null
+                ])
                 .eq("id", value: game.id)
                 .execute()
             roundStartedAt = now
+            prepEndsAt = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// A brief "get to your court" buffer after a rotation, before the
+    /// round timer actually starts counting down — the countdown itself
+    /// is rendered with `Text(timerInterval:countsDown:)`, the built-in
+    /// SwiftUI/Live Activity way to show a live countdown, so every
+    /// device just needs this one Date, no per-second sync required.
+    @MainActor
+    func startPrepPhase() async {
+        guard !isPaused else { return }
+        guard game.prepSeconds > 0 else {
+            await startRound()
+            return
+        }
+        do {
+            let ends = Date().addingTimeInterval(TimeInterval(game.prepSeconds))
+            try await supabase.from("games")
+                .update([
+                    "prep_ends_at": AnyJSON.string(ISO8601DateFormatter().string(from: ends)),
+                    "current_round_started_at": AnyJSON.null
+                ])
+                .eq("id", value: game.id)
+                .execute()
+            prepEndsAt = ends
+            roundStartedAt = nil
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -550,13 +769,13 @@ final class LiveDashboardViewModel {
     /// since King of the Court has no point target to break a tie by.
     @MainActor
     func rotateKingOfTheCourt() async {
-        guard !isRotating else { return }
+        guard !isRotating, !isPaused else { return }
         isRotating = true
         defer { isRotating = false }
 
         let matchesByCourt = activeMatches
         guard !matchesByCourt.isEmpty else {
-            await startRound()
+            await startPrepPhase()
             return
         }
         let sortedCourts = courts.sorted { $0.position < $1.position }
@@ -647,7 +866,7 @@ final class LiveDashboardViewModel {
                 try await supabase.from("match_players").insert(matchPlayers).execute()
             }
 
-            await startRound()
+            await startPrepPhase()
             await loadAll()
         } catch {
             errorMessage = error.localizedDescription

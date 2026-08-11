@@ -35,7 +35,7 @@ struct PlayerHistoryView: View {
                     Section("All-time") {
                         LabeledContent("Games played", value: "\(allTimeGamesPlayed)")
                         LabeledContent("Wins", value: "\(allTimeWins)")
-                        LabeledContent("Win rate", value: allTimeGamesPlayed == 0 ? "—" : "\(Int(winRate * 100))%")
+                        LabeledContent("Win rate", value: allTimeGamesPlayed == 0 ? "None yet" : "\(Int(winRate * 100))%")
                     }
 
                     Section("This game") {

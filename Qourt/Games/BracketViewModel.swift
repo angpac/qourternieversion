@@ -115,6 +115,10 @@ final class BracketViewModel {
                 .value
 
             await loadActiveMatches()
+        } catch is CancellationError {
+            // Superseded by a newer load (e.g. pull-to-refresh interrupted
+            // by a realtime-triggered reload) — leave state as-is rather
+            // than blanking it out or surfacing a bogus error.
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -155,6 +159,8 @@ final class BracketViewModel {
                 guard let matchID = tm.matchId, let mwp = byMatchID[matchID] else { return nil }
                 return (tm.id, mwp)
             })
+        } catch is CancellationError {
+            // Superseded by a newer load — leave activeMatches as-is.
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -170,12 +176,16 @@ final class BracketViewModel {
             }
             realtimeSubscriptions.append(subscription)
         }
-        await channel.subscribe()
+        try? await channel.subscribeWithError()
     }
 
     @MainActor
     func startMatch(_ tournamentMatch: TournamentMatch, on court: Court) async {
-        guard let teamA = tournamentMatch.teamAPlayerIds, let teamB = tournamentMatch.teamBPlayerIds else { return }
+        // Same hard requirement as the regular dashboard's startMatch: a
+        // match with an empty team must never be writable, non-nil isn't
+        // enough on its own to prove there's actually someone in it.
+        guard let teamA = tournamentMatch.teamAPlayerIds, let teamB = tournamentMatch.teamBPlayerIds,
+              !teamA.isEmpty, !teamB.isEmpty else { return }
         struct NewMatch: Encodable {
             let game_id: UUID
             let court_id: UUID
@@ -206,7 +216,7 @@ final class BracketViewModel {
 
     @MainActor
     func updateScore(matchID: UUID, scoreA: Int, scoreB: Int) async {
-        try? await supabase.from("matches")
+        _ = try? await supabase.from("matches")
             .update(["score_a": scoreA, "score_b": scoreB])
             .eq("id", value: matchID)
             .execute()
