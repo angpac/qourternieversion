@@ -25,6 +25,7 @@ struct ContentView: View {
                 MyGamesView(auth: auth)
             }
         }
+        .background(Color.appBackground.ignoresSafeArea())
         .task {
             await auth.restoreSession()
             isRestoringSession = false

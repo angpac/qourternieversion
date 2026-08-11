@@ -12,6 +12,11 @@ struct QourtApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var deepLinkRouter = DeepLinkRouter()
 
+    init() {
+        UITableView.appearance().backgroundColor = .appBackground
+        UICollectionView.appearance().backgroundColor = .appBackground
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

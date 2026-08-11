@@ -34,7 +34,7 @@ struct InvitePlayersView: View {
                         .resizable()
                         .frame(width: 220, height: 220)
                         .padding()
-                        .background(.white, in: RoundedRectangle(cornerRadius: 16))
+                        .background(Color.appBackground, in: RoundedRectangle(cornerRadius: 16))
                         .shadow(radius: 2)
                 }
 
