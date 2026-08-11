@@ -9,6 +9,13 @@
 import Foundation
 
 enum PlayerStatus: String, Codable {
+    /// Set by `join_game_by_code` when the game has `requires_approval`
+    /// on — the player has joined but an admin hasn't let them in yet, so
+    /// they hold no queue position. Must stay in sync with the
+    /// `player_status` enum in Postgres: a value missing here makes the
+    /// whole row fail to decode, which surfaces as a blank Watch screen
+    /// rather than a visible error.
+    case pending
     case queued
     case onCourt = "on_court"
     case resting
