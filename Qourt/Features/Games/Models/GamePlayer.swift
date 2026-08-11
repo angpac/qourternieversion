@@ -5,14 +5,6 @@
 
 import Foundation
 
-enum PlayerStatus: String, Codable {
-    case pending
-    case queued
-    case onCourt = "on_court"
-    case resting
-    case removed
-}
-
 struct GamePlayer: Codable, Identifiable, Hashable {
     let id: UUID
     var gameId: UUID

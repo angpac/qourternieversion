@@ -5,13 +5,6 @@
 
 import Foundation
 
-enum MatchStatus: String, Codable {
-    case inProgress = "in_progress"
-    case awaitingConfirmation = "awaiting_confirmation"
-    case confirmed
-    case cancelled
-}
-
 struct Match: Codable, Identifiable, Hashable {
     let id: UUID
     var gameId: UUID
