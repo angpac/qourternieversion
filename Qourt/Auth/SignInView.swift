@@ -24,7 +24,8 @@ struct SignInView: View {
                 //Text("Qourt")
                     //.font(.largeTitle.bold())
                 Text("Run the game. Not the whiteboard.")
-                    .font(.subheadline)
+                    .font(.custom("DIN-Regular", size: 12))
+                    //.font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 

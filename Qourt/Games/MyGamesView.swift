@@ -113,8 +113,39 @@ struct MyGamesView: View {
         }
     }
 
-    @ViewBuilder
+    private var titleHeader: some View {
+        HStack(alignment: .center) {
+            Text("My games")
+                .font(.custom("DIN-Regular", size: 34))
+                .fontWeight(.bold)
+                .foregroundStyle(.primary)
+            Spacer()
+            Button {
+                isShowingSettings = true
+            } label: {
+                Image(systemName: "person.crop.circle")
+                    .symbolRenderingMode(.monochrome)
+                    .font(.system(size: 18))
+                    .foregroundStyle(.black)
+                    .frame(width: 40, height: 40)
+                    //.background(Color(.blue))
+                    .background(Color(.systemGray5), in: Circle())
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 16)
+    }
+
     private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            titleHeader
+            sidebarContent
+        }
+    }
+
+    @ViewBuilder
+    private var sidebarContent: some View {
         Group {
             if isLoading {
                 ProgressView()
@@ -169,7 +200,8 @@ struct MyGamesView: View {
                 }
             }
         }
-        .navigationTitle("My games")
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
         // TEMPORARY — purely to verify a rebuild actually reached the
         // device; safe to remove once that's confirmed.
         .safeAreaInset(edge: .bottom) {
@@ -178,8 +210,8 @@ struct MyGamesView: View {
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 4)
         }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
+        .overlay(alignment: .bottomTrailing) {
+            Group {
                 if auth.role == .admin {
                     Menu {
                         Button {
@@ -202,22 +234,27 @@ struct MyGamesView: View {
                         }
                     } label: {
                         Image(systemName: "plus")
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 56, height: 56)
+                            .background(Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255), in: Circle())
+                            .shadow(radius: 4, y: 2)
                     }
                 } else {
                     Button {
                         isJoiningGame = true
                     } label: {
                         Image(systemName: "qrcode.viewfinder")
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 56, height: 56)
+                            .background(Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255), in: Circle())
+                            .shadow(radius: 4, y: 2)
                     }
                 }
             }
-            ToolbarItem(placement: .cancellationAction) {
-                Button {
-                    isShowingSettings = true
-                } label: {
-                    Image(systemName: "person.crop.circle")
-                }
-            }
+            .padding(.trailing, 20)
+            .padding(.bottom, 20)
         }
         .sheet(isPresented: $isJoiningGame) {
             JoinGameView(auth: auth, initialCode: pendingJoinCode) { game in
@@ -378,18 +415,22 @@ struct MyGamesView: View {
         VStack(spacing: 16) {
             Spacer()
 
-            Image(systemName: "sportscourt")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
+            Image(systemName: "figure.badminton")
+                .font(.system(size: 140))
+                .foregroundStyle(Color(.black))
+                //.frame(width: 140, height: 293)
 
             Text("No games yet")
-                .font(.title3.bold())
+                //.font(.title3.bold())
+                .font(.custom("DIN-Regular", size: 36))
+                .fontWeight(.bold)
 
             Text(auth.role == .admin
                  ? "Create a game to get your first session running."
                  : "Join a game with a QR code or join code to get started.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            .font(.custom("DIN-Regular", size: 18))
+                //.font(.subheadline)
+                .foregroundStyle(Color(red: 0x5F / 255, green: 0x4C / 255, blue: 0x00 / 255))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
 
@@ -402,6 +443,7 @@ struct MyGamesView: View {
 
             Spacer()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @MainActor

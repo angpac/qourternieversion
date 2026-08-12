@@ -26,6 +26,7 @@ struct ContentView: View {
             }
         }
         .background(Color.appBackground.ignoresSafeArea())
+        .environment(\.font, .custom("DIN-Regular", size: 17))
         .task {
             await auth.restoreSession()
             isRestoringSession = false

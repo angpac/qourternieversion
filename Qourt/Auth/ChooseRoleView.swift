@@ -13,7 +13,8 @@ struct ChooseRoleView: View {
             Spacer()
 
             Text("Welcome\(auth.displayName.map { ", \($0)" } ?? "")")
-                .font(.title2.bold())
+                //.font(.title2.bold())
+                .font(.custom("DIN-Regular", size: 24))
 
             Text("What are you doing today?")
                 .foregroundStyle(.secondary)
@@ -56,14 +57,16 @@ private struct RoleCard: View {
         HStack(spacing: 16) {
             Image(systemName: systemImage)
                 .font(.title)
-                .foregroundStyle(.tint)
+                .foregroundStyle(Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255))
                 .frame(width: 44)
 
             VStack(alignment: .leading) {
                 Text(title)
-                    .font(.headline)
+                    //.font(.headline)
+                    .font(.custom("DIN-Regular", size: 16))
                 Text(subtitle)
-                    .font(.subheadline)
+                    //.font(.subheadline)
+                    .font(.custom("DIN-Regular", size: 12))
                     .foregroundStyle(.secondary)
             }
 
