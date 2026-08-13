@@ -79,12 +79,15 @@ struct PlayerLiveStatusView: View {
         .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle(viewModel.game.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.appBackground, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     isShowingRoster = true
                 } label: {
-                    Label("Roster", systemImage: "list.bullet")
+                    Label("Roster", systemImage: "person.2.fill")
+                        .foregroundStyle(Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255))
                 }
             }
             ToolbarItem(placement: .secondaryAction) {
@@ -145,7 +148,11 @@ struct PlayerLiveStatusView: View {
                 Button("Skip my turn") {
                     Task { await viewModel.stepOut() }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255), in: RoundedRectangle(cornerRadius: 12))
             case .resting:
                 Button("I'm ready to play") {
                     Task { await viewModel.stepBackIn() }
@@ -160,8 +167,10 @@ struct PlayerLiveStatusView: View {
                     isConfirmingLeave = true
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.red)
-                .font(.footnote)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.red, in: RoundedRectangle(cornerRadius: 12))
             }
         }
     }
@@ -246,7 +255,7 @@ struct PlayerLiveStatusView: View {
         VStack(spacing: 8) {
             Image(systemName: "figure.stand.line.dotted.figure.stand")
                 .font(.system(size: 40))
-                .foregroundStyle(.tint)
+                .foregroundStyle(Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255))
             Text("You're #\(viewModel.queuePosition ?? 0) in line")
                 .font(.title2.bold())
             if let groupsAheadText = viewModel.groupsAheadText {
