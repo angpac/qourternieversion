@@ -19,7 +19,9 @@ targets:
     platform: iOS
     sources:
       - path: Qourt
-      - path: QourtShared
+      - path: QourtShared/Models
+      - path: QourtShared/Networking
+      - path: QourtShared/LiveActivity
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: net.criers.Qourt
@@ -50,7 +52,9 @@ targets:
     platform: iOS
     sources:
       - path: QourtWidgetExtension
-      - path: QourtShared
+      # No Networking/ here: this target has no Supabase package dependency.
+      - path: QourtShared/Models
+      - path: QourtShared/LiveActivity
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: net.criers.Qourt.widget
@@ -63,6 +67,11 @@ targets:
     platform: watchOS
     sources:
       - path: "Qourt Watch App"
+      # No LiveActivity/ here: ActivityKit isn't available on watchOS.
+      # Live Activities surface on the Watch via the iPhone's Smart Stack,
+      # driven by the iOS widget extension, not by this target.
+      - path: QourtShared/Models
+      - path: QourtShared/Networking
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: net.criers.Qourt.watchkitapp
