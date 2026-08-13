@@ -21,7 +21,14 @@ let supabase = SupabaseClient(
     supabaseKey: SupabaseConfig.anonKey,
     options: SupabaseClientOptions(
         auth: SupabaseClientOptions.AuthOptions(
-            storage: KeychainLocalStorage(accessGroup: SupabaseConfig.sharedKeychainAccessGroup)
+            storage: KeychainLocalStorage(accessGroup: SupabaseConfig.sharedKeychainAccessGroup),
+            // Opting in early to what becomes the default in supabase-swift 3.
+            // Leaving it off logs a runtime warning on every launch. Safe here
+            // because nothing in the app observes `authStateChanges` — every
+            // caller reads `supabase.auth.session`, which refreshes on demand
+            // and throws when the stored session can't be renewed, so an
+            // expired session still can't slip through as signed-in.
+            emitLocalSessionAsInitialSession: true
         )
     )
 )
