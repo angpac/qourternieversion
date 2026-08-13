@@ -31,6 +31,7 @@ struct JoinGameView: View {
                             isShowingScanner = true
                         } label: {
                             Label("Scan QR code", systemImage: "qrcode.viewfinder")
+                                .foregroundStyle(Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255))
                         }
                     } else if let previewError = viewModel.previewError {
                         HStack {
@@ -76,8 +77,11 @@ struct JoinGameView: View {
 
                 Section("Your info") {
                     TextField("Name", text: $viewModel.displayName)
-                    Picker("Skill level", selection: $viewModel.skillLevel) {
-                        ForEach(viewModel.skillLevels, id: \.self) { Text($0) }
+                    HStack {
+                        Text("Skill level")
+                        Spacer()
+                        Text(viewModel.skillLevel)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
@@ -102,13 +106,19 @@ struct JoinGameView: View {
                     } label: {
                         if isJoining {
                             ProgressView()
+                                .frame(maxWidth: .infinity)
                         } else {
                             Text("Join")
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity, alignment: .center)
                         }
                     }
+                    .listRowBackground(Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255))
                     .disabled(isJoining || (!isEditingCode && viewModel.previewError != nil))
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("Join a game")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

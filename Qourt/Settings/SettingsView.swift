@@ -14,56 +14,30 @@ struct SettingsView: View {
     @State private var isSaving = false
 
     private let skillLevels = ["Beginner", "Intermediate", "Advanced"]
+    private let labelColor = Color(red: 0x5F / 255, green: 0x4C / 255, blue: 0x00 / 255)
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Profile") {
-                    TextField("Name", text: $name)
-                        .textInputAutocapitalization(.words)
-                    Picker("Default skill level", selection: $skillLevel) {
-                        ForEach(skillLevels, id: \.self) { Text($0) }
-                    }
-                    .onChange(of: skillLevel) { _, newValue in
-                        Task { await auth.setDefaultSkillLevel(newValue) }
-                    }
-                }
-
-                if auth.role == .admin {
-                    Section {
-                        NavigationLink {
-                            ClubsListView(auth: auth)
-                        } label: {
-                            Label("Manage Clubs", systemImage: "person.3.sequence")
-                        }
-                    }
-                }
-
-                Section {
+            VStack(spacing: 0) {
+                HStack {
                     Button {
-                        auth.role = auth.role == .admin ? .player : .admin
                         dismiss()
                     } label: {
-                        Label(
-                            auth.role == .admin ? "Switch to Play" : "Switch to Admin",
-                            systemImage: "arrow.left.arrow.right"
-                        )
+                        Image(systemName: "xmark")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(.black)
+                            .frame(width: 32, height: 32)
+                            .background(Color(.systemGray5), in: Circle())
                     }
-                }
+                    .buttonStyle(.plain)
 
-                Section {
-                    Button("Sign out", role: .destructive) {
-                        Task { await auth.signOut() }
-                    }
-                }
-            }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
+                    Spacer()
+
+                    Text("Settings")
+                        .font(.headline)
+
+                    Spacer()
+
                     Button {
                         Task {
                             isSaving = true
@@ -75,11 +49,111 @@ struct SettingsView: View {
                             ProgressView()
                         } else {
                             Text("Save")
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255),
+                                    in: Capsule()
+                                )
                         }
                     }
+                    .buttonStyle(.plain)
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
                 }
+                .padding()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        Text("Profile")
+                            .font(.custom("DIN-Regular", size: 34))
+                            .fontWeight(.bold)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Name")
+                                .font(.custom("DIN-Regular", size: 14))
+                                .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
+
+                            TextField("Name", text: $name)
+                                .textInputAutocapitalization(.words)
+                                .padding()
+                                .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                                .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255), lineWidth: 1)
+                                    )
+                        }
+
+                        if auth.role != .admin {
+                            HStack {
+                                Text("Skill level")
+                                Spacer()
+                                Picker("Skill level", selection: $skillLevel) {
+                                    ForEach(skillLevels, id: \.self) { Text($0) }
+                                }
+                                .pickerStyle(.menu)
+                                .tint(.primary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color(.systemGray5), in: Capsule())
+                            }
+                            .padding()
+                            .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                            .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255), lineWidth: 1)
+                                )
+                            .onChange(of: skillLevel) { _, newValue in
+                                Task { await auth.setDefaultSkillLevel(newValue) }
+                            }
+                        }
+
+                        if auth.role == .admin {
+                            NavigationLink {
+                                ClubsListView(auth: auth)
+                            } label: {
+                                Label("Manage Clubs", systemImage: "person.3.sequence")
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
+                            }
+                            
+                            .padding()
+                            .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                            .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255), lineWidth: 1)
+                                )
+                        }
+
+                        Button {
+                            auth.role = auth.role == .admin ? .player : .admin
+                            dismiss()
+                        } label: {
+                            Label(
+                                auth.role == .admin ? "Switch to Play" : "Switch to Admin",
+                                systemImage: "arrow.left.arrow.right"
+                            )
+                            .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding()
+
+                        Button(role: .destructive) {
+                            Task { await auth.signOut() }
+                        } label: {
+                            Text("Sign out")
+                                .font(.headline)
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                        }
+                        .background(Color.red, in: Capsule())
+                    }
+                    .padding()
+                }
             }
+            .background(Color.appBackground.ignoresSafeArea())
+            .toolbar(.hidden, for: .navigationBar)
             .onAppear {
                 name = auth.displayName ?? ""
                 skillLevel = auth.defaultSkillLevel

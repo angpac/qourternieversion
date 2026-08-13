@@ -50,6 +50,7 @@ struct PlayerBracketView: View {
             }
             .padding()
         }
+        .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("Bracket")
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.start() }

@@ -39,8 +39,10 @@ struct PlayerRosterView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                .scrollContentBackground(.hidden)
             }
         }
+        .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("Roster")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }

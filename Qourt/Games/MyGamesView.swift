@@ -38,6 +38,7 @@ struct MyGamesView: View {
         // iPhone had before — no separate code paths needed per device.
         NavigationSplitView {
             sidebar
+                .background(Color.appBackground.ignoresSafeArea())
         } detail: {
             NavigationStack {
                 if let selectedGame {
@@ -50,6 +51,7 @@ struct MyGamesView: View {
                     )
                 }
             }
+            .background(Color.appBackground.ignoresSafeArea())
         }
         .task { await loadGames() }
         .task { await consumePendingJoinLinkIfAny() }
@@ -194,12 +196,17 @@ struct MyGamesView: View {
                         }
                     }
                 }
+                .scrollContentBackground(.hidden)
+                .background(Color.appBackground)
             } else {
                 List(games, selection: $selectedGame) { game in
                     gameRow(game).tag(game)
                 }
+                .scrollContentBackground(.hidden)
+                .background(Color.appBackground)
             }
         }
+
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         // TEMPORARY — purely to verify a rebuild actually reached the
@@ -220,11 +227,11 @@ struct MyGamesView: View {
                         } label: {
                             Label("Create a game", systemImage: "plus")
                         }
-                        Button {
-                            isChoosingTemplate = true
-                        } label: {
-                            Label("Start from a template", systemImage: "square.stack")
-                        }
+                        //Button {
+                        //    isChoosingTemplate = true
+                        //} label: {
+                        //    Label("Start from a template", systemImage: "square.stack")
+                        //}
                         Button {
                             adminInviteCode = ""
                             adminInviteError = nil
@@ -261,6 +268,7 @@ struct MyGamesView: View {
                 Task { await loadGames() }
                 selectedGame = game
             }
+            .presentationBackground(Color.appBackground)
         }
         .sheet(isPresented: $isShowingSettings) {
             SettingsView(auth: auth)
@@ -319,35 +327,66 @@ struct MyGamesView: View {
             }
         }
         .sheet(isPresented: $isRedeemingAdminInvite) {
+            let labelColor = Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255)
             NavigationStack {
-                Form {
-                    Section {
-                        TextField("Invite code", text: $adminInviteCode)
-                            .textInputAutocapitalization(.characters)
-                            .autocorrectionDisabled()
-                    } footer: {
-                        Text("Ask the game's owner for their co-admin invite code (not the player join code).")
-                    }
-                    if let adminInviteError {
-                        Section {
-                            Text(adminInviteError).foregroundStyle(.red)
-                        }
-                    }
-                }
-                .navigationTitle("Join as co-admin")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
+                VStack(spacing: 0) {
+                    HStack {
                         Button("Cancel") { isRedeemingAdminInvite = false }
-                    }
-                    ToolbarItem(placement: .confirmationAction) {
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .foregroundStyle(.black)
+                            .background(Color(.systemGray5), in: Capsule())
+                            .buttonStyle(.plain)
+
+                        Spacer()
+
+                        Text("Join as co-admin")
+                            .font(.headline)
+
+                        Spacer()
+
                         Button("Join") {
                             Task { await redeemAdminInvite() }
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .foregroundStyle(.black)
+                        .background(Color(.systemGray5), in: Capsule())
+                        .buttonStyle(.plain)
                         .disabled(adminInviteCode.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
+                    .padding()
+
+                    VStack(alignment: .leading, spacing: 24) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Invite Code")
+                                .font(.subheadline)
+                                .foregroundStyle(labelColor)
+
+                            TextField("Invite Code", text: $adminInviteCode)
+                                .textInputAutocapitalization(.characters)
+                                .autocorrectionDisabled()
+                                .padding()
+                                .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                        }
+
+                        Text("Ask the game's owner for their co-admin invite code (not the player join code).")
+                            .font(.subheadline)
+                            .foregroundStyle(labelColor)
+
+                        if let adminInviteError {
+                            Text(adminInviteError)
+                                .foregroundStyle(.red)
+                        }
+
+                        Spacer()
+                    }
+                    .padding()
                 }
+                .background(Color.appBackground.ignoresSafeArea())
+                .toolbar(.hidden, for: .navigationBar)
             }
+            .presentationBackground(Color.appBackground)
         }
     }
 

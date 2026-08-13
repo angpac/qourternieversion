@@ -96,33 +96,39 @@ struct CreateGameView: View {
             }
 
             Section("Rotation format") {
-                ForEach(RotationFormat.allCases) { format in
-                    Button {
-                        viewModel.format = format
-                        if format.isTournament {
-                            viewModel.isDoubles = false
-                            viewModel.formatMode = .singles
-                        }
-                    } label: {
-                        HStack {
-                            Image(systemName: format.systemImage)
-                                .foregroundStyle(.tint)
-                                .frame(width: 28)
-                            VStack(alignment: .leading) {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    ForEach(RotationFormat.allCases) { format in
+                        let isSelected = viewModel.format == format
+                        Button {
+                            viewModel.format = format
+                            if format.isTournament {
+                                viewModel.isDoubles = false
+                                viewModel.formatMode = .singles
+                            }
+                        } label: {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Image(systemName: format.systemImage)
+                                    .font(.subheadline)
                                 Text(format.title)
-                                    .foregroundStyle(.primary)
+                                    .font(.subheadline.bold())
                                 Text(format.subtitle)
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
                             }
-                            Spacer()
-                            if viewModel.format == format {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.tint)
-                            }
+                            .foregroundStyle(isSelected ? .white : Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                            .background(
+                                isSelected ? Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255) : Color.white,
+                                in: RoundedRectangle(cornerRadius: 12)
+                            )
                         }
+                        .buttonStyle(.plain)
                     }
                 }
+                .padding(.vertical, 4)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .padding(.horizontal)
             }
 
             Section {
@@ -134,6 +140,8 @@ struct CreateGameView: View {
                 .disabled(viewModel.name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("Create a game")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

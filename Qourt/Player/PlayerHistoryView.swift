@@ -61,8 +61,10 @@ struct PlayerHistoryView: View {
                         }
                     }
                 }
+                .scrollContentBackground(.hidden)
             }
         }
+        .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("History & stats")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }

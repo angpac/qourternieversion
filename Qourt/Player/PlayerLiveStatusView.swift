@@ -76,6 +76,7 @@ struct PlayerLiveStatusView: View {
                     .padding(.top, 60)
             }
         }
+        .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle(viewModel.game.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
