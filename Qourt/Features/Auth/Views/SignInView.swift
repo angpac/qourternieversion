@@ -10,17 +10,22 @@ struct SignInView: View {
     var auth: AuthViewModel
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 36) {
             Spacer()
 
-            VStack(spacing: 8) {
-                Image(systemName: "figure.badminton")
-                    .font(.system(size: 56))
-                    .foregroundStyle(.tint)
-                Text("Qourt")
-                    .font(.largeTitle.bold())
+            VStack(spacing: 20) {
+                Image("qourtimage")
+                    .resizable()
+                        .scaledToFit()
+                        .frame(width: 305, height: 108)
+                //Image(systemName: "figure.badminton")
+                    //.font(.system(size: 56))
+                    //.foregroundStyle(.tint)
+                //Text("Qourt")
+                    //.font(.largeTitle.bold())
                 Text("Run the game. Not the whiteboard.")
-                    .font(.subheadline)
+                    .font(.custom("DIN-Regular", size: 12))
+                    //.font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 
@@ -52,6 +57,7 @@ struct SignInView: View {
             Spacer()
         }
         .padding()
+        .background(Color.appBackground.ignoresSafeArea())
     }
 }
 
