@@ -90,6 +90,15 @@ final class CreateGameViewModel {
 
     @MainActor
     func createGame(ownerID: UUID) async -> Bool {
+        // Guards against creating a second, duplicate game if this is called
+        // again after already succeeding once in this wizard session (e.g. a
+        // navigation race that sends the admin back to this screen before
+        // `createdGame` has propagated) — a game once created here should
+        // never be re-inserted.
+        if createdGame != nil {
+            return true
+        }
+
         // The SDK stores the session in the Keychain; a code-signing/entitlements
         // change since the last sign-in can strand it there, silently falling
         // back to the anon key and failing RLS. Fail fast with a clear message

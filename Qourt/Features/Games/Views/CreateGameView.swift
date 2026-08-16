@@ -96,33 +96,46 @@ struct CreateGameView: View {
             }
 
             Section("Rotation format") {
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    ForEach(RotationFormat.allCases) { format in
-                        let isSelected = viewModel.format == format
-                        Button {
-                            viewModel.format = format
-                            if format.isTournament {
-                                viewModel.isDoubles = false
-                                viewModel.formatMode = .singles
+                // A plain, eager VStack/HStack grid rather than LazyVGrid —
+                // only 8 fixed cards, no benefit from lazy layout, and
+                // LazyVGrid nested inside a Form/List is a known source of
+                // blank-render glitches on push navigation (the destination
+                // Form would sometimes render with zero rows until the user
+                // backed out and re-entered).
+                VStack(spacing: 12) {
+                    ForEach(Array(RotationFormat.allCases.chunked(into: 2)), id: \.self) { row in
+                        HStack(spacing: 12) {
+                            ForEach(row) { format in
+                                let isSelected = viewModel.format == format
+                                Button {
+                                    viewModel.format = format
+                                    if format.isTournament {
+                                        viewModel.isDoubles = false
+                                        viewModel.formatMode = .singles
+                                    }
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Image(systemName: format.systemImage)
+                                            .font(.subheadline)
+                                        Text(format.title)
+                                            .font(.subheadline.bold())
+                                        Text(format.subtitle)
+                                            .font(.caption)
+                                    }
+                                    .foregroundStyle(isSelected ? .white : Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding()
+                                    .background(
+                                        isSelected ? Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255) : Color.white,
+                                        in: RoundedRectangle(cornerRadius: 12)
+                                    )
+                                }
+                                .buttonStyle(.plain)
                             }
-                        } label: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Image(systemName: format.systemImage)
-                                    .font(.subheadline)
-                                Text(format.title)
-                                    .font(.subheadline.bold())
-                                Text(format.subtitle)
-                                    .font(.caption)
+                            if row.count < 2 {
+                                Spacer()
                             }
-                            .foregroundStyle(isSelected ? .white : Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
-                            .background(
-                                isSelected ? Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255) : Color.white,
-                                in: RoundedRectangle(cornerRadius: 12)
-                            )
                         }
-                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.vertical, 4)
@@ -162,6 +175,14 @@ struct CreateGameView: View {
             get: { viewModel.courtSinglesOverrides[index] ?? !viewModel.isDoubles },
             set: { viewModel.courtSinglesOverrides[index] = $0 }
         )
+    }
+}
+
+private extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
+        }
     }
 }
 

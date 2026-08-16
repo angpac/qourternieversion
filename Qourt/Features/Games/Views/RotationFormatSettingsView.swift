@@ -115,6 +115,8 @@ struct RotationFormatSettingsView: View {
                 .disabled(isCreating)
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("Rotation settings")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $navigateToInvite) {
