@@ -12,7 +12,7 @@ struct MyGamesView: View {
     @Environment(DeepLinkRouter.self) private var deepLinkRouter
     @State private var selectedGame: Game?
     @State private var games: [Game] = []
-    @State private var isLoading = true
+    @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var isJoiningGame = false
     @State private var isShowingSettings = false
@@ -552,5 +552,10 @@ struct MyGamesView: View {
 }
 
 #Preview {
-    MyGamesView(auth: AuthViewModel())
+    
+    var vm = AuthViewModel()
+    vm.role = .admin
+
+     return MyGamesView(auth: vm).environment(DeepLinkRouter())
+    //MyGamesView(auth: AuthViewModel())
 }

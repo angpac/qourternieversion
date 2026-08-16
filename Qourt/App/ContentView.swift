@@ -17,8 +17,6 @@ struct ContentView: View {
                 ProgressView()
             } else if !auth.isSignedIn {
                 SignInView(auth: auth)
-            } else if auth.needsNameSetup {
-                SetNameView(auth: auth)
             } else if auth.role == nil {
                 ChooseRoleView(auth: auth)
             } else {
