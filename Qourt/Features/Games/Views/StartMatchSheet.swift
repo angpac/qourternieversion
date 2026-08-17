@@ -14,56 +14,31 @@ struct StartMatchSheet: View {
     @State private var teamB: [GamePlayer] = []
     @State private var isStarting = false
 
+    private let labelColor = Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255)
+    private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
+
     private var perTeam: Int { viewModel.playersPerTeam(for: court) }
     private var isDoubles: Bool { perTeam > 1 }
     private var canStart: Bool { teamA.count == perTeam && teamB.count == perTeam }
 
     var body: some View {
         NavigationStack {
-            List {
-                Section("Team A") {
-                    teamRow(teamA) { player in teamA.removeAll { $0.id == player.id } }
-                    if teamA.count < perTeam {
-                        Text("Tap a player below to add")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Section("Team B") {
-                    teamRow(teamB) { player in teamB.removeAll { $0.id == player.id } }
-                    if teamB.count < perTeam {
-                        Text("Tap a player below to add")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Section("Queue") {
-                    ForEach(availablePlayers) { player in
-                        Button {
-                            assign(player)
-                        } label: {
-                            HStack {
-                                Text(player.displayName)
-                                    .foregroundStyle(.primary)
-                                Spacer()
-                                Text(player.skillLevel)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .disabled(teamA.count == perTeam && teamB.count == perTeam)
-                    }
-                }
-            }
-            .navigationTitle(isDoubles ? "Build teams" : "Pick players")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+            VStack(spacing: 0) {
+                HStack {
                     Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .foregroundStyle(.black)
+                        .background(Color(.systemGray5), in: Capsule())
+                        .buttonStyle(.plain)
+
+                    Spacer()
+
+                    Text(isDoubles ? "Build teams" : "Pick players")
+                        .font(.headline)
+
+                    Spacer()
+
                     Button {
                         Task {
                             isStarting = true
@@ -78,9 +53,63 @@ struct StartMatchSheet: View {
                             Text("Assign")
                         }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .foregroundStyle(canStart ? .white : .black)
+                    .background(canStart ? accentColor : Color(.systemGray5), in: Capsule())
+                    .buttonStyle(.plain)
                     .disabled(!canStart || isStarting)
                 }
+                .padding()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        teamSection(title: "Team A", players: teamA) { player in
+                            teamA.removeAll { $0.id == player.id }
+                        }
+
+                        teamSection(title: "Team B", players: teamB) { player in
+                            teamB.removeAll { $0.id == player.id }
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Queue")
+                                .font(.subheadline)
+                                .foregroundStyle(labelColor)
+
+                            VStack(spacing: 0) {
+                                ForEach(availablePlayers) { player in
+                                    Button {
+                                        assign(player)
+                                    } label: {
+                                        HStack {
+                                            Text(player.displayName)
+                                                .foregroundStyle(.primary)
+                                            Spacer()
+                                            Text(player.skillLevel)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        .padding()
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(teamA.count == perTeam && teamB.count == perTeam)
+
+                                    if player.id != availablePlayers.last?.id {
+                                        Rectangle()
+                                            .fill(labelColor.opacity(0.15))
+                                            .frame(height: 1)
+                                            .padding(.horizontal)
+                                    }
+                                }
+                            }
+                            .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                        }
+                    }
+                    .padding(.horizontal)
+                }
             }
+            .background(Color.appBackground.ignoresSafeArea())
         }
     }
 
@@ -98,24 +127,75 @@ struct StartMatchSheet: View {
     }
 
     @ViewBuilder
-    private func teamRow(_ players: [GamePlayer], remove: @escaping (GamePlayer) -> Void) -> some View {
-        if players.isEmpty {
-            Text("No players yet")
-                .foregroundStyle(.secondary)
-        } else {
-            ForEach(players) { player in
-                Button {
-                    remove(player)
-                } label: {
-                    HStack {
-                        Text(player.displayName)
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
+    private func teamSection(title: String, players: [GamePlayer], remove: @escaping (GamePlayer) -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.subheadline)
+                .foregroundStyle(labelColor)
+
+            VStack(alignment: .leading, spacing: 0) {
+                if players.isEmpty {
+                    Text("No players yet")
+                        .font(.headline)
+                        .padding(.horizontal)
+                        .padding(.top, 12)
+
+                    Rectangle()
+                        .fill(labelColor.opacity(0.3))
+                        .frame(height: 1)
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+
+                    Text("Tap a player below to add")
+                        .font(.subheadline)
+                        .foregroundStyle(labelColor)
+                        .padding(.horizontal)
+                        .padding(.vertical, 12)
+                } else {
+                    ForEach(players) { player in
+                        Button {
+                            remove(player)
+                        } label: {
+                            HStack {
+                                Text(player.displayName)
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding()
+                        }
+                        .buttonStyle(.plain)
+
+                        if player.id != players.last?.id {
+                            Rectangle()
+                                .fill(labelColor.opacity(0.15))
+                                .frame(height: 1)
+                                .padding(.horizontal)
+                        }
                     }
                 }
             }
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
         }
     }
+}
+
+#Preview {
+    let game = Game(
+        id: UUID(),
+        name: "Sunday Open Play",
+        location: "Community Center",
+        startsAt: Date(),
+        numCourts: 4,
+        isDoubles: true,
+        format: .kingOfTheCourt,
+        formatSettings: [:],
+        joinCode: "7K2P9Q",
+        status: "draft"
+    )
+    return StartMatchSheet(
+        viewModel: LiveDashboardViewModel(game: game),
+        court: Court(id: UUID(), gameId: game.id, name: "Court 1", position: 0, isLaneSplit: false, isChallengeCourt: false, winStreak: 0, singlesOverride: nil)
+    )
 }

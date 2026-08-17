@@ -145,6 +145,38 @@ final class LiveDashboardViewModel {
         }
     }
 
+    /// Pages whoever's at the front of the queue via a targeted
+    /// announcement — reuses the exact same `announcements` insert (and
+    /// its existing DB trigger → send-push Edge Function) that
+    /// SendAnnouncementSheet uses, just pre-filled with the next-in-line
+    /// player and a canned message instead of the admin typing one.
+    @MainActor
+    func announceNextUp() async {
+        guard let nextPlayer = queue.first,
+              let userID = (try? await supabase.auth.session)?.user.id
+        else { return }
+
+        struct NewAnnouncement: Encodable {
+            let game_id: UUID
+            let sender_id: UUID
+            let target_player_id: UUID?
+            let message: String
+        }
+
+        do {
+            try await supabase.from("announcements")
+                .insert(NewAnnouncement(
+                    game_id: game.id,
+                    sender_id: userID,
+                    target_player_id: nextPlayer.id,
+                    message: "You're up next! Get ready."
+                ))
+                .execute()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     @MainActor
     func start() async {
         await loadAll()

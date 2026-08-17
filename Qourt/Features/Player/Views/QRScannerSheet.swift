@@ -65,3 +65,7 @@ struct QRScannerSheet: View {
         authorizationStatus = granted ? .authorized : .denied
     }
 }
+
+#Preview {
+    QRScannerSheet(onScannedCode: { _ in })
+}

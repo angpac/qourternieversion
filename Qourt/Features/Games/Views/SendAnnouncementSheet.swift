@@ -89,3 +89,25 @@ struct SendAnnouncementSheet: View {
         }
     }
 }
+
+#Preview {
+    let game = Game(
+        id: UUID(),
+        name: "Sunday Open Play",
+        location: "Community Center",
+        startsAt: Date(),
+        numCourts: 4,
+        isDoubles: true,
+        format: .kingOfTheCourt,
+        formatSettings: [:],
+        joinCode: "7K2P9Q",
+        status: "draft"
+    )
+    return SendAnnouncementSheet(
+        game: game,
+        roster: [
+            GamePlayer(id: UUID(), gameId: game.id, profileId: nil, displayName: "Alex Chen", skillLevel: "Intermediate", status: .queued, queuePosition: 1, joinedAt: Date()),
+            GamePlayer(id: UUID(), gameId: game.id, profileId: nil, displayName: "Jamie Lee", skillLevel: "Advanced", status: .queued, queuePosition: 2, joinedAt: Date())
+        ]
+    )
+}

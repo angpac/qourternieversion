@@ -106,3 +106,26 @@ private struct LockScreenView: View {
         .padding()
     }
 }
+
+#Preview("Notification", as: .content, using: PlayerActivityAttributes(gameName: "Sunday Open Play")) {
+    PlayerActivityWidget()
+} contentStates: {
+    PlayerActivityAttributes.ContentState(
+        status: "onCourt",
+        queuePosition: nil,
+        courtName: "Court 2",
+        teammateNames: "Alex Chen",
+        opponentNames: "Jamie Lee & Sam Park",
+        scoreA: 11,
+        scoreB: 7
+    )
+    PlayerActivityAttributes.ContentState(
+        status: "queued",
+        queuePosition: 3,
+        courtName: nil,
+        teammateNames: nil,
+        opponentNames: nil,
+        scoreA: nil,
+        scoreB: nil
+    )
+}

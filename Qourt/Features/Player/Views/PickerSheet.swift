@@ -113,3 +113,18 @@ struct PickerSheet: View {
         }
     }
 }
+
+#Preview {
+    PickerSheet(viewModel: PlayerLiveStatusViewModel(game: Game(
+        id: UUID(),
+        name: "Sunday Open Play",
+        location: "Community Center",
+        startsAt: Date(),
+        numCourts: 4,
+        isDoubles: true,
+        format: .pegBoard,
+        formatSettings: [:],
+        joinCode: "7K2P9Q",
+        status: "active"
+    )))
+}

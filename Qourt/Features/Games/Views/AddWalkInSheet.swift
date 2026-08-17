@@ -50,3 +50,18 @@ struct AddWalkInSheet: View {
         }
     }
 }
+
+#Preview {
+    AddWalkInSheet(viewModel: LiveDashboardViewModel(game: Game(
+        id: UUID(),
+        name: "Sunday Open Play",
+        location: "Community Center",
+        startsAt: Date(),
+        numCourts: 4,
+        isDoubles: true,
+        format: .kingOfTheCourt,
+        formatSettings: [:],
+        joinCode: "7K2P9Q",
+        status: "draft"
+    )))
+}

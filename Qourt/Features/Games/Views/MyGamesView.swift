@@ -156,17 +156,28 @@ struct MyGamesView: View {
             } else if auth.role == .admin {
                 List(selection: $selectedGame) {
                     if !ongoingGames.isEmpty {
-                        Section("Ongoing") {
+                        Section {
                             ForEach(ongoingGames) { game in
-                                gameRow(game).tag(game)
+                                gameRow(game) {
+                                    Task { await setArchived(game, archived: true) }
+                                }
+                                .tag(game)
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
                             }
+                        } header: {
+                            Text("Ongoing")
+                                .font(.subheadline)
+                                .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
                         }
                     }
                     if !endedGames.isEmpty {
-                        Section("Ended") {
+                        Section {
                             ForEach(endedGames) { game in
                                 gameRow(game)
                                     .tag(game)
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
                                     .swipeActions {
                                         Button("Archive") {
                                             Task { await setArchived(game, archived: true) }
@@ -174,6 +185,10 @@ struct MyGamesView: View {
                                         .tint(.gray)
                                     }
                             }
+                        } header: {
+                            Text("Ended")
+                                .font(.subheadline)
+                                .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
                         }
                     }
                     if !archivedGames.isEmpty {
@@ -185,6 +200,8 @@ struct MyGamesView: View {
                                 ForEach(archivedGames) { game in
                                     gameRow(game)
                                         .tag(game)
+                                        .listRowBackground(Color.clear)
+                                        .listRowSeparator(.hidden)
                                         .swipeActions {
                                             Button("Unarchive") {
                                                 Task { await setArchived(game, archived: false) }
@@ -193,6 +210,8 @@ struct MyGamesView: View {
                                         }
                                 }
                             }
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                         }
                     }
                 }
@@ -200,7 +219,10 @@ struct MyGamesView: View {
                 .background(Color.appBackground)
             } else {
                 List(games, selection: $selectedGame) { game in
-                    gameRow(game).tag(game)
+                    gameRow(game)
+                        .tag(game)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                 }
                 .scrollContentBackground(.hidden)
                 .background(Color.appBackground)
@@ -227,11 +249,11 @@ struct MyGamesView: View {
                         } label: {
                             Label("Create a game", systemImage: "plus")
                         }
-                        //Button {
-                        //    isChoosingTemplate = true
-                        //} label: {
-                        //    Label("Start from a template", systemImage: "square.stack")
-                        //}
+                        Button {
+                            isChoosingTemplate = true
+                        } label: {
+                            Label("Start from a template", systemImage: "square.stack")
+                        }
                         Button {
                             adminInviteCode = ""
                             adminInviteError = nil
@@ -290,7 +312,15 @@ struct MyGamesView: View {
                 }
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { isChoosingTemplate = false }
+                        Button {
+                            isChoosingTemplate = false
+                        } label: {
+                            Text("Cancel")
+                                .foregroundStyle(.black)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color(.systemGray5), in: Capsule())
+                        }
                     }
                 }
             }
@@ -350,8 +380,13 @@ struct MyGamesView: View {
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
-                        .foregroundStyle(.black)
-                        .background(Color(.systemGray5), in: Capsule())
+                        .foregroundStyle(adminInviteCode.trimmingCharacters(in: .whitespaces).isEmpty ? .black : .white)
+                        .background(
+                            adminInviteCode.trimmingCharacters(in: .whitespaces).isEmpty
+                                ? Color(.systemGray5)
+                                : Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255),
+                            in: Capsule()
+                        )
                         .buttonStyle(.plain)
                         .disabled(adminInviteCode.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
@@ -423,13 +458,29 @@ struct MyGamesView: View {
         isJoiningGame = true
     }
 
-    private func gameRow(_ game: Game) -> some View {
-        VStack(alignment: .leading) {
-            Text(game.name).font(.headline)
-            Text("\(game.numCourts) courts · \(game.format.title)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+    private func gameRow(_ game: Game, onArchive: (() -> Void)? = nil) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(game.name)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text("\(game.numCourts) courts  •  \(game.format.title)")
+                    .font(.caption)
+                    .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
+            }
+            Spacer()
+            if let onArchive {
+                Button(action: onArchive) {
+                    Image(systemName: "trash")
+                        .foregroundStyle(.white)
+                        .frame(width: 36, height: 36)
+                        .background(Color.red, in: Circle())
+                }
+                .buttonStyle(.plain)
+            }
         }
+        .padding()
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
     }
 
     @MainActor

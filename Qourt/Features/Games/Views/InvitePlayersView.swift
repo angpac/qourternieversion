@@ -16,55 +16,75 @@ struct InvitePlayersView: View {
         URL(string: "https://qourt-web.vercel.app/join/\(game.joinCode)")!
     }
 
+    private let labelColor = Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255)
+    private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                VStack(spacing: 4) {
-                    Text(game.name)
-                        .font(.title2.bold())
-                    Text("Share this with players to join")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.top, 24)
+        VStack(spacing: 0) {
+            HStack {
+                Text("Invite Players")
+                    .font(.custom("DIN-Regular", size: 28))
+                    .fontWeight(.bold)
 
-                if let qrImage = QRCodeGenerator.image(for: joinURL.absoluteString) {
-                    Image(uiImage: qrImage)
-                        .interpolation(.none)
-                        .resizable()
-                        .frame(width: 220, height: 220)
-                        .padding()
-                        .background(Color.appBackground, in: RoundedRectangle(cornerRadius: 16))
-                        .shadow(radius: 2)
-                }
-
-                VStack(spacing: 8) {
-                    Text("Join code")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(game.joinCode)
-                        .font(.system(.largeTitle, design: .monospaced, weight: .bold))
-                        .tracking(4)
-                }
-
-                ShareLink(item: joinURL) {
-                    Label("Share invite link", systemImage: "square.and.arrow.up")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(.tint, in: RoundedRectangle(cornerRadius: 12))
-                        .foregroundStyle(.white)
-                }
-                .padding(.horizontal, 32)
+                Spacer()
 
                 Button("Done") { showLiveDashboard = true }
-                    .buttonStyle(.borderedProminent)
-                    .padding(.top, 8)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .foregroundStyle(.white)
+                    .background(accentColor, in: Capsule())
+                    .buttonStyle(.plain)
             }
             .padding()
+
+            ScrollView {
+                VStack(spacing: 24) {
+                    VStack(spacing: 4) {
+                        Text(game.name)
+                            .font(.custom("DIN-Regular", size: 28))
+                            .fontWeight(.bold)
+                            .foregroundStyle(labelColor)
+                        Text("Share this with the players to join")
+                            .font(.subheadline)
+                            .foregroundStyle(labelColor)
+                    }
+                    .padding(.top, 8)
+
+                    if let qrImage = QRCodeGenerator.image(for: joinURL.absoluteString) {
+                        Image(uiImage: qrImage)
+                            .interpolation(.none)
+                            .resizable()
+                            .frame(width: 220, height: 220)
+                            .padding()
+                            .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                            .shadow(radius: 2)
+                    }
+
+                    VStack(spacing: 8) {
+                        Text("Join code")
+                            .font(.subheadline)
+                            .foregroundStyle(labelColor)
+                        Text(game.joinCode)
+                            .font(.system(.largeTitle, design: .monospaced, weight: .bold))
+                            .tracking(4)
+                            .foregroundStyle(labelColor)
+                    }
+
+                    ShareLink(item: joinURL) {
+                        Label("Share invite link", systemImage: "square.and.arrow.up")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(accentColor, in: Capsule())
+                            .foregroundStyle(.white)
+                    }
+                    .padding(.horizontal, 32)
+                }
+                .padding()
+            }
         }
-        .navigationTitle("Invite players")
-        .navigationBarTitleDisplayMode(.inline)
+        .background(Color.appBackground.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         // Pushed on the SAME stack this screen is already on, rather than
         // dismissing this sheet and asking a separate view to re-present
         // something — that cross-modal handoff was the actual bug: a swipe

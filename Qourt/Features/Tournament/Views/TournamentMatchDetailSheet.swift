@@ -73,3 +73,35 @@ struct TournamentMatchDetailSheet: View {
         }
     }
 }
+
+#Preview {
+    let game = Game(
+        id: UUID(),
+        name: "Sunday Open Play",
+        location: "Community Center",
+        startsAt: Date(),
+        numCourts: 4,
+        isDoubles: true,
+        format: .tournamentSingleElim,
+        formatSettings: [:],
+        joinCode: "7K2P9Q",
+        status: "active"
+    )
+    return TournamentMatchDetailSheet(
+        viewModel: BracketViewModel(game: game),
+        tournamentMatch: TournamentMatch(
+            id: UUID(),
+            tournamentId: UUID(),
+            matchId: nil,
+            bracket: "winners",
+            round: 1,
+            slot: 0,
+            nextMatchId: nil,
+            teamAPlayerIds: [UUID()],
+            teamBPlayerIds: [UUID()],
+            advancesToSlot: nil,
+            loserNextMatchId: nil,
+            loserAdvancesToSlot: nil
+        )
+    )
+}

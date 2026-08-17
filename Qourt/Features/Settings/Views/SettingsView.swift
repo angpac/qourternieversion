@@ -78,34 +78,24 @@ struct SettingsView: View {
                                 .textInputAutocapitalization(.words)
                                 .padding()
                                 .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
-                                .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255), lineWidth: 1)
-                                    )
                         }
 
-                        if auth.role != .admin {
-                            HStack {
-                                Text("Skill level")
-                                Spacer()
-                                Picker("Skill level", selection: $skillLevel) {
-                                    ForEach(skillLevels, id: \.self) { Text($0) }
-                                }
-                                .pickerStyle(.menu)
-                                .tint(.primary)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Color(.systemGray5), in: Capsule())
+                        HStack {
+                            Text("Skill level")
+                            Spacer()
+                            Picker("Skill level", selection: $skillLevel) {
+                                ForEach(skillLevels, id: \.self) { Text($0) }
                             }
-                            .padding()
-                            .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
-                            .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255), lineWidth: 1)
-                                )
-                            .onChange(of: skillLevel) { _, newValue in
-                                Task { await auth.setDefaultSkillLevel(newValue) }
-                            }
+                            .pickerStyle(.menu)
+                            .tint(.primary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color(.systemGray5), in: Capsule())
+                        }
+                        .padding()
+                        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                        .onChange(of: skillLevel) { _, newValue in
+                            Task { await auth.setDefaultSkillLevel(newValue) }
                         }
 
                         if auth.role == .admin {
@@ -116,13 +106,8 @@ struct SettingsView: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
                             }
-                            
                             .padding()
                             .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
-                            .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255), lineWidth: 1)
-                                )
                         }
 
                         Button {
@@ -130,13 +115,14 @@ struct SettingsView: View {
                             dismiss()
                         } label: {
                             Label(
-                                auth.role == .admin ? "Switch to Play" : "Switch to Admin",
+                                auth.role == .admin ? "Switch to Player" : "Switch to Admin",
                                 systemImage: "arrow.left.arrow.right"
                             )
                             .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .padding()
+                        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
 
                         Button(role: .destructive) {
                             Task { await auth.signOut() }

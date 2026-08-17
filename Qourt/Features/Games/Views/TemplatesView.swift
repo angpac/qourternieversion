@@ -15,11 +15,7 @@ struct TemplatesView: View {
             if viewModel.isLoading {
                 ProgressView()
             } else if viewModel.templates.isEmpty {
-                ContentUnavailableView(
-                    "No templates yet",
-                    systemImage: "square.stack",
-                    description: Text("Save a game's setup from its Game Summary screen after ending it.")
-                )
+                emptyState
             } else {
                 List {
                     ForEach(viewModel.templates) { template in
@@ -51,9 +47,39 @@ struct TemplatesView: View {
                 }
             }
         }
+        .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("Templates")
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.load() }
         .refreshable { await viewModel.load() }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 16) {
+            Spacer()
+
+            Image(systemName: "square.stack")
+                .font(.system(size: 140))
+                .foregroundStyle(Color(.black))
+
+            Text("No templates yet")
+                .font(.custom("DIN-Regular", size: 36))
+                .fontWeight(.bold)
+
+            Text("Save a game's setup from its Game Summary after ending it.")
+                .font(.custom("DIN-Regular", size: 18))
+                .foregroundStyle(Color(red: 0x5F / 255, green: 0x4C / 255, blue: 0x00 / 255))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+#Preview {
+    NavigationStack {
+        TemplatesView(onUseTemplate: { _ in })
     }
 }

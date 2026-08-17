@@ -36,6 +36,10 @@ struct LiveDashboardView: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
+                        Text(viewModel.game.name)
+                            .font(.custom("DIN-Regular", size: 34))
+                            .fontWeight(.bold)
+
                         if !viewModel.isConnected {
                             reconnectingBanner
                         }
@@ -72,7 +76,8 @@ struct LiveDashboardView: View {
                 .refreshable { await viewModel.loadAll() }
             }
         }
-        .navigationTitle(viewModel.game.name)
+        .background(Color.appBackground.ignoresSafeArea())
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         // In the create-a-game flow, this is pushed straight after Invite
         // Players — but that QR/join code screen is also always reachable
@@ -92,74 +97,21 @@ struct LiveDashboardView: View {
                 }
             }
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    isAddingWalkIn = true
-                } label: {
-                    Label("Add player", systemImage: "person.badge.plus")
-                }
-                .disabled(viewModel.hasEnded)
-            }
-            ToolbarItem(placement: .secondaryAction) {
-                Button {
-                    isShowingRoster = true
-                } label: {
-                    Label("Roster", systemImage: "list.bullet")
-                }
-            }
-            ToolbarItem(placement: .secondaryAction) {
-                Button {
-                    isShowingInvite = true
-                } label: {
-                    Label("Invite players", systemImage: "qrcode")
-                }
-            }
-            ToolbarItem(placement: .secondaryAction) {
-                Button {
-                    isSendingAnnouncement = true
-                } label: {
-                    Label("Send announcement", systemImage: "megaphone")
-                }
-                .disabled(viewModel.hasEnded)
-            }
-            ToolbarItem(placement: .secondaryAction) {
-                Button {
-                    isShowingCoAdmins = true
-                } label: {
-                    Label("Co-admins", systemImage: "person.badge.key")
-                }
-            }
-            ToolbarItem(placement: .secondaryAction) {
-                Button {
-                    isShowingCourts = true
-                } label: {
-                    Label("Manage courts", systemImage: "sportscourt")
-                }
-            }
-            ToolbarItem(placement: .secondaryAction) {
-                Button {
-                    Task {
-                        if viewModel.isPaused {
-                            await viewModel.resumeGame()
-                        } else {
-                            await viewModel.pauseGame()
-                        }
+                HStack(spacing: 4) {
+                    Button {
+                        isAddingWalkIn = true
+                    } label: {
+                        Image(systemName: "person.badge.plus")
+                            .foregroundStyle(.black)
+                            .frame(width: 28, height: 28)
                     }
-                } label: {
-                    if viewModel.isPaused {
-                        Label("Resume game", systemImage: "play.circle")
-                    } else {
-                        Label("Pause game", systemImage: "pause.circle")
-                    }
+                    .disabled(viewModel.hasEnded)
+
+                    menuButton
                 }
-                .disabled(viewModel.hasEnded)
-            }
-            ToolbarItem(placement: .secondaryAction) {
-                Button(role: .destructive) {
-                    isConfirmingEndGame = true
-                } label: {
-                    Label("End game", systemImage: "flag.checkered")
-                }
-                .disabled(viewModel.hasEnded)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
+                .background(Color(.systemGray5), in: Capsule())
             }
         }
         .task { await viewModel.start() }
@@ -232,6 +184,63 @@ struct LiveDashboardView: View {
             Button("OK") { viewModel.errorMessage = nil }
         } message: {
             Text(viewModel.errorMessage ?? "")
+        }
+    }
+
+    private var menuButton: some View {
+        Menu {
+            Button {
+                isShowingRoster = true
+            } label: {
+                Label("Roster", systemImage: "list.bullet")
+            }
+            Button {
+                isShowingInvite = true
+            } label: {
+                Label("Invite Players", systemImage: "qrcode")
+            }
+            Button {
+                isSendingAnnouncement = true
+            } label: {
+                Label("Send announcement", systemImage: "megaphone")
+            }
+            .disabled(viewModel.hasEnded)
+            Button {
+                isShowingCoAdmins = true
+            } label: {
+                Label("Co-admins", systemImage: "person.badge.key")
+            }
+            Button {
+                isShowingCourts = true
+            } label: {
+                Label("Manage courts", systemImage: "sportscourt")
+            }
+            Button {
+                Task {
+                    if viewModel.isPaused {
+                        await viewModel.resumeGame()
+                    } else {
+                        await viewModel.pauseGame()
+                    }
+                }
+            } label: {
+                if viewModel.isPaused {
+                    Label("Resume game", systemImage: "play.circle")
+                } else {
+                    Label("Pause game", systemImage: "pause.circle")
+                }
+            }
+            .disabled(viewModel.hasEnded)
+            Button(role: .destructive) {
+                isConfirmingEndGame = true
+            } label: {
+                Label("End game", systemImage: "flag.checkered")
+            }
+            .disabled(viewModel.hasEnded)
+        } label: {
+            Image(systemName: "ellipsis")
+                .foregroundStyle(.black)
+                .frame(width: 28, height: 28)
         }
     }
 
@@ -322,6 +331,7 @@ struct LiveDashboardView: View {
             HStack {
                 Text("Courts")
                     .font(.headline)
+                    .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
                 Spacer()
                 if viewModel.canAutoAssign {
                     Button {
@@ -359,34 +369,44 @@ struct LiveDashboardView: View {
 
     private var queueSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Queue (\(viewModel.queue.count))")
+            Text(viewModel.queue.isEmpty ? "Queue (0)" : "Queue ( \(viewModel.queue.count) waiting )")
                 .font(.headline)
+                .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
 
             if viewModel.queue.isEmpty {
                 Text("No players waiting.")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
             } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(viewModel.queue.enumerated()), id: \.element.id) { index, player in
-                        HStack {
-                            Text("\(index + 1)")
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                                .frame(width: 20)
-                            Text(player.displayName)
-                            Spacer()
-                            Text(player.skillLevel)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.vertical, 8)
-                        if player.id != viewModel.queue.last?.id {
-                            Divider()
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: 16) {
+                        ForEach(Array(viewModel.queue.enumerated()), id: \.element.id) { index, player in
+                            VStack(spacing: 6) {
+                                Text("\(index + 1)")
+                                    .font(.headline.bold())
+                                    .foregroundStyle(.white)
+                                    .frame(width: 44, height: 44)
+                                    .background(Color.black, in: Circle())
+                                Text(player.displayName)
+                                    .font(.caption2)
+                                    .lineLimit(1)
+                                    .frame(width: 60)
+                            }
                         }
                     }
+                    .padding(.vertical, 4)
                 }
-                .padding()
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+
+                Button {
+                    Task { await viewModel.announceNextUp() }
+                } label: {
+                    Label("Announce next up", systemImage: "speaker.wave.2.fill")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                }
+                .background(Color.black, in: Capsule())
+                .buttonStyle(.plain)
             }
         }
     }
@@ -398,6 +418,9 @@ private struct CourtCard: View {
     let onTapEmpty: () -> Void
     let onTapMatch: (MatchWithPlayers) -> Void
 
+    private let labelColor = Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255)
+    private let goldColor = Color(red: 0xB8 / 255, green: 0x8A / 255, blue: 0x2B / 255)
+
     var body: some View {
         Button {
             if let match { onTapMatch(match) } else { onTapEmpty() }
@@ -406,21 +429,26 @@ private struct CourtCard: View {
                 HStack {
                     Text(court.name)
                         .font(.subheadline.bold())
-                    if court.isChallengeCourt && court.winStreak > 0 {
-                        Text("🔥\(court.winStreak)")
-                            .font(.caption2.bold())
-                    }
                     if let override = court.singlesOverride {
                         Text(override ? "Singles" : "Doubles")
                             .font(.caption2.bold())
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    if let match {
+                    if court.isChallengeCourt {
+                        Image(systemName: "crown.fill")
+                            .foregroundStyle(goldColor)
+                    } else if let match {
                         Circle()
                             .fill(match.match.status == .awaitingConfirmation ? .orange : .green)
                             .frame(width: 8, height: 8)
                     }
+                }
+
+                if court.isChallengeCourt {
+                    Text("KING'S COURT")
+                        .font(.caption2.bold())
+                        .foregroundStyle(goldColor)
                 }
 
                 if let match {
@@ -428,6 +456,16 @@ private struct CourtCard: View {
                         Text("No players, tap to fix")
                             .font(.caption)
                             .foregroundStyle(.red)
+                    } else if court.isChallengeCourt && court.winStreak > 0 {
+                        Text("DEFENDING")
+                            .font(.caption2.bold())
+                            .foregroundStyle(labelColor)
+                        Text(match.teamA.map(\.displayName).joined(separator: " • "))
+                            .font(.caption)
+                            .lineLimit(1)
+                        Text("\(court.winStreak) straight win\(court.winStreak == 1 ? "" : "s")")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     } else {
                         // One line, "Name & Name vs Name & Name" — easier to
                         // scan at a glance than three stacked lines.
@@ -435,10 +473,13 @@ private struct CourtCard: View {
                             .font(.caption)
                             .lineLimit(2)
                     }
+
                     if match.match.status == .awaitingConfirmation {
                         Text("Needs confirmation")
                             .font(.caption2.bold())
                             .foregroundStyle(.orange)
+                    } else {
+                        elapsedTimer(since: match.match.startedAt)
                     }
                 } else {
                     Spacer()
@@ -447,21 +488,35 @@ private struct CourtCard: View {
                         Text("Tap to assign players")
                     }
                     .font(.caption.bold())
-                    .foregroundStyle(.tint)
+                    .foregroundStyle(labelColor)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .frame(height: 100)
-            .background(match != nil ? Color.accentColor.opacity(0.12) : Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+            .frame(minHeight: 100)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 12))
             .overlay {
-                if match == nil {
+                if court.isChallengeCourt {
                     RoundedRectangle(cornerRadius: 12)
-                        .strokeBorder(Color.accentColor.opacity(0.4), style: StrokeStyle(lineWidth: 1.5, dash: [5]))
+                        .stroke(goldColor, lineWidth: 2)
                 }
             }
         }
         .buttonStyle(.plain)
+    }
+
+    private func elapsedTimer(since startedAt: Date) -> some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let elapsed = Int(context.date.timeIntervalSince(startedAt))
+            HStack(spacing: 4) {
+                Image(systemName: "clock")
+                Text(String(format: "%d:%02d", elapsed / 60, elapsed % 60))
+                    .fontWeight(.bold)
+                Text("elapsed")
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
     }
 }
 

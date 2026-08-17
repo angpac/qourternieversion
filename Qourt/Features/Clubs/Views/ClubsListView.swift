@@ -125,3 +125,9 @@ struct ClubsListView: View {
         }
     }
 }
+
+#Preview {
+    NavigationStack {
+        ClubsListView(auth: AuthViewModel())
+    }
+}

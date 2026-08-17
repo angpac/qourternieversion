@@ -10,10 +10,11 @@ struct Club: Codable, Identifiable, Hashable {
     var ownerId: UUID
     var name: String
     var sports: [String]
+    var courts: Int
     var clubAdminInviteCode: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, sports
+        case id, name, sports, courts
         case ownerId = "owner_id"
         case clubAdminInviteCode = "club_admin_invite_code"
     }

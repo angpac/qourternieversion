@@ -71,3 +71,16 @@ struct ManageClubAdminsView: View {
         }
     }
 }
+
+#Preview {
+    NavigationStack {
+        ManageClubAdminsView(club: Club(
+            id: UUID(),
+            ownerId: UUID(),
+            name: "Riverside Badminton Club",
+            sports: ["Badminton"],
+            courts: 4,
+            clubAdminInviteCode: "AB12CD"
+        ))
+    }
+}

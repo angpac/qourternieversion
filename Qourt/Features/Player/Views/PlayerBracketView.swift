@@ -96,3 +96,20 @@ struct PlayerBracketView: View {
         }
     }
 }
+
+#Preview {
+    NavigationStack {
+        PlayerBracketView(game: Game(
+            id: UUID(),
+            name: "Sunday Open Play",
+            location: "Community Center",
+            startsAt: Date(),
+            numCourts: 4,
+            isDoubles: true,
+            format: .tournamentSingleElim,
+            formatSettings: [:],
+            joinCode: "7K2P9Q",
+            status: "active"
+        ))
+    }
+}

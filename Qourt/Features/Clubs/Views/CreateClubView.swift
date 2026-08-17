@@ -11,72 +11,120 @@ struct CreateClubView: View {
 
     @State private var viewModel = ClubsViewModel()
     @State private var name = ""
-    @State private var selectedSports: Set<String> = []
-    @State private var customSport = ""
+    @State private var courts = 0
     @State private var isCreating = false
     @Environment(\.dismiss) private var dismiss
 
+    private let labelColor = Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255)
+    private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
+
+    private var isNameEmpty: Bool { name.trimmingCharacters(in: .whitespaces).isEmpty }
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Club name") {
-                    TextField("e.g. Riverside Badminton Club", text: $name)
-                }
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        Text("Create a Club")
+                            .font(.custom("DIN-Regular", size: 34))
+                            .fontWeight(.bold)
 
-                Section {
-                    ForEach(CommonSport.allCases) { sport in
-                        Button {
-                            toggle(sport.rawValue)
-                        } label: {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Club Name")
+                                .font(.subheadline)
+                                .foregroundStyle(labelColor)
+
+                            TextField("Club Name", text: $name)
+                                .padding()
+                                .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Available Courts")
+                                .font(.subheadline)
+                                .foregroundStyle(labelColor)
+
                             HStack {
-                                Text(sport.rawValue).foregroundStyle(.primary)
+                                Text("\(courts) Court\(courts <= 1 ? "" : "s")")
+                                    .foregroundStyle(.primary)
+
                                 Spacer()
-                                if selectedSports.contains(sport.rawValue) {
-                                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.tint)
+
+                                HStack(spacing: 12) {
+                                    Button {
+                                        courts -= 1
+                                    } label: {
+                                        Image(systemName: "minus")
+                                            .foregroundStyle(.black)
+                                            .frame(width: 28, height: 28)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 6)
+                                                    .stroke(Color.black, lineWidth: 1)
+                                            )
+                                    }
+                                    .disabled(courts == 0)
+
+                                    Rectangle()
+                                        .fill(labelColor.opacity(0.3))
+                                        .frame(width: 1, height: 24)
+
+                                    Button {
+                                        courts += 1
+                                    } label: {
+                                        Image(systemName: "plus")
+                                            .foregroundStyle(labelColor)
+                                            .frame(width: 28, height: 28)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 6)
+                                                    .stroke(labelColor, lineWidth: 1)
+                                            )
+                                    }
                                 }
+                                .buttonStyle(.plain)
                             }
+                            .padding()
+                            .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                        }
+
+                        if let errorMessage = viewModel.errorMessage {
+                            Text(errorMessage).foregroundStyle(.red)
                         }
                     }
-                    TextField("Other sport", text: $customSport)
-                } header: {
-                    Text("Sports this club runs")
-                } footer: {
-                    Text("You can run more than one sport under the same club, pick as many as apply.")
+                    .padding(.horizontal)
+                    .padding(.top, 8)
                 }
 
-                if let errorMessage = viewModel.errorMessage {
-                    Section {
-                        Text(errorMessage).foregroundStyle(.red)
+                Button {
+                    Task { await createClub() }
+                } label: {
+                    if isCreating {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                    } else {
+                        Text("Create Club")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
                     }
                 }
+                .background(isNameEmpty ? Color(.systemGray5) : accentColor, in: Capsule())
+                .buttonStyle(.plain)
+                .disabled(isNameEmpty || isCreating)
+                .padding()
             }
-            .navigationTitle("Create a club")
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
                     Button {
-                        Task { await createClub() }
+                        dismiss()
                     } label: {
-                        if isCreating {
-                            ProgressView()
-                        } else {
-                            Text("Create")
-                        }
+                        Label("Back", systemImage: "chevron.left")
                     }
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isCreating)
                 }
             }
-        }
-    }
-
-    private func toggle(_ sport: String) {
-        if selectedSports.contains(sport) {
-            selectedSports.remove(sport)
-        } else {
-            selectedSports.insert(sport)
         }
     }
 
@@ -86,11 +134,7 @@ struct CreateClubView: View {
         isCreating = true
         defer { isCreating = false }
 
-        var sports = Array(selectedSports)
-        let trimmedCustom = customSport.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedCustom.isEmpty { sports.append(trimmedCustom) }
-
-        if let club = await viewModel.createClub(name: name, sports: sports, ownerID: userID) {
+        if let club = await viewModel.createClub(name: name, sports: [], courts: courts, ownerID: userID) {
             onCreated(club)
             dismiss()
         }

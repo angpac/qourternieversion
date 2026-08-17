@@ -79,3 +79,23 @@ struct TournamentSetupView: View {
         .task { await viewModel.load() }
     }
 }
+
+#Preview {
+    NavigationStack {
+        TournamentSetupView(
+            game: Game(
+                id: UUID(),
+                name: "Sunday Open Play",
+                location: "Community Center",
+                startsAt: Date(),
+                numCourts: 4,
+                isDoubles: true,
+                format: .tournamentSingleElim,
+                formatSettings: [:],
+                joinCode: "7K2P9Q",
+                status: "draft"
+            ),
+            onGenerated: { _ in }
+        )
+    }
+}

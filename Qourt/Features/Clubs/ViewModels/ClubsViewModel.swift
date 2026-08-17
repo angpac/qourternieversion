@@ -53,11 +53,12 @@ final class ClubsViewModel {
     }
 
     @MainActor
-    func createClub(name: String, sports: [String], ownerID: UUID) async -> Club? {
+    func createClub(name: String, sports: [String], courts: Int, ownerID: UUID) async -> Club? {
         struct NewClub: Encodable {
             let owner_id: UUID
             let name: String
             let sports: [String]
+            let courts: Int
             let club_admin_invite_code: String
         }
         do {
@@ -66,6 +67,7 @@ final class ClubsViewModel {
                     owner_id: ownerID,
                     name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                     sports: sports,
+                    courts: courts,
                     club_admin_invite_code: generateInviteCode()
                 ))
                 .select()

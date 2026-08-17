@@ -58,3 +58,25 @@ struct ReportScoreSheet: View {
         }
     }
 }
+
+#Preview {
+    let game = Game(
+        id: UUID(),
+        name: "Sunday Open Play",
+        location: "Community Center",
+        startsAt: Date(),
+        numCourts: 4,
+        isDoubles: true,
+        format: .kingOfTheCourt,
+        formatSettings: [:],
+        joinCode: "7K2P9Q",
+        status: "active"
+    )
+    let playerA = GamePlayer(id: UUID(), gameId: game.id, profileId: nil, displayName: "Alex Chen", skillLevel: "Intermediate", status: .onCourt, queuePosition: nil, joinedAt: Date())
+    let playerB = GamePlayer(id: UUID(), gameId: game.id, profileId: nil, displayName: "Jamie Lee", skillLevel: "Advanced", status: .onCourt, queuePosition: nil, joinedAt: Date())
+    let match = Match(id: UUID(), gameId: game.id, courtId: UUID(), status: .inProgress, scoreA: 5, scoreB: 3, startedAt: Date(), endedAt: nil)
+    return ReportScoreSheet(
+        viewModel: PlayerLiveStatusViewModel(game: game),
+        matchWithPlayers: MatchWithPlayers(match: match, teamA: [playerA], teamB: [playerB])
+    )
+}
