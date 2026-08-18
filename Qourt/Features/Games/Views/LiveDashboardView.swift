@@ -96,22 +96,21 @@ struct LiveDashboardView: View {
                     }
                 }
             }
-            ToolbarItem(placement: .primaryAction) {
-                HStack(spacing: 4) {
-                    Button {
-                        isAddingWalkIn = true
-                    } label: {
-                        Image(systemName: "person.badge.plus")
-                            .foregroundStyle(.black)
-                            .frame(width: 28, height: 28)
-                    }
-                    .disabled(viewModel.hasEnded)
-
-                    menuButton
+            // A ToolbarItemGroup, not an HStack in a single ToolbarItem with
+            // its own capsule behind it. The back chevron draws no background
+            // itself — that white circle is the system's toolbar chrome — so a
+            // hand-rolled systemGray5 capsule sat next to it in a visibly
+            // different shade and shape. Letting the system lay these out
+            // keeps them grouped while matching the back button exactly.
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button {
+                    isAddingWalkIn = true
+                } label: {
+                    Image(systemName: "person.badge.plus")
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
-                .background(Color(.systemGray5), in: Capsule())
+                .disabled(viewModel.hasEnded)
+
+                menuButton
             }
         }
         .task { await viewModel.start() }
@@ -239,8 +238,6 @@ struct LiveDashboardView: View {
             .disabled(viewModel.hasEnded)
         } label: {
             Image(systemName: "ellipsis")
-                .foregroundStyle(.black)
-                .frame(width: 28, height: 28)
         }
     }
 
@@ -331,7 +328,7 @@ struct LiveDashboardView: View {
             HStack {
                 Text("Courts")
                     .font(.headline)
-                    .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
+                    .foregroundStyle(Color.appSecondaryText)
                 Spacer()
                 if viewModel.canAutoAssign {
                     Button {
@@ -371,11 +368,11 @@ struct LiveDashboardView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(viewModel.queue.isEmpty ? "Queue (0)" : "Queue ( \(viewModel.queue.count) waiting )")
                 .font(.headline)
-                .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
+                .foregroundStyle(Color.appSecondaryText)
 
             if viewModel.queue.isEmpty {
                 Text("No players waiting.")
-                    .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
+                    .foregroundStyle(Color.appSecondaryText)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 16) {
@@ -383,9 +380,9 @@ struct LiveDashboardView: View {
                             VStack(spacing: 6) {
                                 Text("\(index + 1)")
                                     .font(.headline.bold())
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(Color.appOnInverseSurface)
                                     .frame(width: 44, height: 44)
-                                    .background(Color.black, in: Circle())
+                                    .background(Color.appInverseSurface, in: Circle())
                                 Text(player.displayName)
                                     .font(.caption2)
                                     .lineLimit(1)
@@ -401,11 +398,11 @@ struct LiveDashboardView: View {
                 } label: {
                     Label("Announce next up", systemImage: "speaker.wave.2.fill")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color.appOnInverseSurface)
                         .frame(maxWidth: .infinity)
                         .padding()
                 }
-                .background(Color.black, in: Capsule())
+                .background(Color.appInverseSurface, in: Capsule())
                 .buttonStyle(.plain)
             }
         }
@@ -418,7 +415,7 @@ private struct CourtCard: View {
     let onTapEmpty: () -> Void
     let onTapMatch: (MatchWithPlayers) -> Void
 
-    private let labelColor = Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255)
+    private let labelColor = Color.appSecondaryText
     private let goldColor = Color(red: 0xB8 / 255, green: 0x8A / 255, blue: 0x2B / 255)
 
     var body: some View {
@@ -494,7 +491,7 @@ private struct CourtCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
             .frame(minHeight: 100)
-            .background(Color.white, in: RoundedRectangle(cornerRadius: 12))
+            .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 12))
             .overlay {
                 if court.isChallengeCourt {
                     RoundedRectangle(cornerRadius: 12)

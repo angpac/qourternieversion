@@ -12,7 +12,11 @@ struct MyGamesView: View {
     @Environment(DeepLinkRouter.self) private var deepLinkRouter
     @State private var selectedGame: Game?
     @State private var games: [Game] = []
-    @State private var isLoading = false
+    /// Starts true so the very first render shows the spinner rather than
+    /// the "No games yet" empty state. With `games` empty and this false,
+    /// the empty state won a frame before `.task` could start loading —
+    /// which is the screen that flashed right after picking a role.
+    @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var isJoiningGame = false
     @State private var isShowingSettings = false
@@ -22,6 +26,10 @@ struct MyGamesView: View {
     @State private var adminInviteError: String?
     @State private var createGameViewModel = CreateGameViewModel()
     @State private var showArchived = false
+    /// Set by the swipe action; the confirmation dialog reads it. Deleting a
+    /// game cascades to its roster, matches, and everyone's history, so it
+    /// never happens straight off a gesture.
+    @State private var gamePendingDeletion: Game?
     @State private var isCreatingGame = false
     @State private var isChoosingTemplate = false
     @State private var pendingCreateAfterTemplate = false
@@ -120,7 +128,7 @@ struct MyGamesView: View {
             Text("My games")
                 .font(.custom("DIN-Regular", size: 34))
                 .fontWeight(.bold)
-                .foregroundStyle(.primary)
+                .foregroundStyle(Color.primary)
             Spacer()
             Button {
                 isShowingSettings = true
@@ -128,7 +136,7 @@ struct MyGamesView: View {
                 Image(systemName: "person.crop.circle")
                     .symbolRenderingMode(.monochrome)
                     .font(.system(size: 18))
-                    .foregroundStyle(.black)
+                    .foregroundStyle(Color.primary)
                     .frame(width: 40, height: 40)
                     //.background(Color(.blue))
                     .background(Color(.systemGray5), in: Circle())
@@ -149,7 +157,12 @@ struct MyGamesView: View {
     @ViewBuilder
     private var sidebarContent: some View {
         Group {
-            if isLoading {
+            // Only take over the whole pane when there is genuinely nothing
+            // to show. Any reload sets isLoading — coming back from a game
+            // you just created runs one — and swapping an already-populated
+            // list out for a spinner and straight back is the flash. With
+            // games in hand the list simply stays put and updates in place.
+            if isLoading && games.isEmpty {
                 ProgressView()
             } else if games.isEmpty {
                 emptyState
@@ -158,17 +171,18 @@ struct MyGamesView: View {
                     if !ongoingGames.isEmpty {
                         Section {
                             ForEach(ongoingGames) { game in
-                                gameRow(game) {
-                                    Task { await setArchived(game, archived: true) }
-                                }
-                                .tag(game)
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
+                                gameRow(game)
+                                    .tag(game)
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                                    .swipeActions(edge: .trailing) {
+                                        rowActions(for: game)
+                                    }
                             }
                         } header: {
                             Text("Ongoing")
                                 .font(.subheadline)
-                                .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
+                                .foregroundStyle(Color.appSecondaryText)
                         }
                     }
                     if !endedGames.isEmpty {
@@ -178,17 +192,14 @@ struct MyGamesView: View {
                                     .tag(game)
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
-                                    .swipeActions {
-                                        Button("Archive") {
-                                            Task { await setArchived(game, archived: true) }
-                                        }
-                                        .tint(.gray)
+                                    .swipeActions(edge: .trailing) {
+                                        rowActions(for: game)
                                     }
                             }
                         } header: {
                             Text("Ended")
                                 .font(.subheadline)
-                                .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
+                                .foregroundStyle(Color.appSecondaryText)
                         }
                     }
                     if !archivedGames.isEmpty {
@@ -202,11 +213,8 @@ struct MyGamesView: View {
                                         .tag(game)
                                         .listRowBackground(Color.clear)
                                         .listRowSeparator(.hidden)
-                                        .swipeActions {
-                                            Button("Unarchive") {
-                                                Task { await setArchived(game, archived: false) }
-                                            }
-                                            .tint(.blue)
+                                        .swipeActions(edge: .trailing) {
+                                            rowActions(for: game)
                                         }
                                 }
                             }
@@ -228,7 +236,31 @@ struct MyGamesView: View {
                 .background(Color.appBackground)
             }
         }
+        // A bare ProgressView has almost no intrinsic height, so while the
+        // first load ran this whole screen collapsed to a short band floating
+        // in the middle of the window — header, FAB and all — until the List
+        // arrived and gave it size. Claiming the full pane up front means
+        // every state occupies the same space and nothing jumps.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
 
+        .confirmationDialog(
+            "Delete \(gamePendingDeletion?.name ?? "this game")?",
+            isPresented: Binding(
+                get: { gamePendingDeletion != nil },
+                set: { if !$0 { gamePendingDeletion = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete game", role: .destructive) {
+                if let game = gamePendingDeletion {
+                    Task { await deleteGame(game) }
+                }
+                gamePendingDeletion = nil
+            }
+            Button("Cancel", role: .cancel) { gamePendingDeletion = nil }
+        } message: {
+            Text("This removes the roster, every match, and the game's history for all players. Archive instead if you just want it out of the list.")
+        }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         // TEMPORARY — purely to verify a rebuild actually reached the
@@ -316,7 +348,7 @@ struct MyGamesView: View {
                             isChoosingTemplate = false
                         } label: {
                             Text("Cancel")
-                                .foregroundStyle(.black)
+                                .foregroundStyle(Color.primary)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
                                 .background(Color(.systemGray5), in: Capsule())
@@ -347,24 +379,36 @@ struct MyGamesView: View {
                         // sidebar's selection in sync for when they land
                         // back here.
                         isCreatingGame = false
-                        let newGame = createGameViewModel.createdGame
+                        // Match by id against the freshly loaded list rather
+                        // than reusing the object returned at insert time.
+                        // Game is Hashable over all its stored properties, so
+                        // the insert-time value stops being equal to the row
+                        // in `games` the moment anything changes (status
+                        // draft -> live, prep_ends_at, a club link). An
+                        // unequal value leaves the sidebar with no matching
+                        // tag and the selection highlight broken. Falling
+                        // back to the insert-time value keeps navigation
+                        // working even if the reload failed.
+                        let newGameID = createGameViewModel.createdGame?.id
+                        let fallback = createGameViewModel.createdGame
                         Task {
                             await loadGames()
-                            selectedGame = newGame
+                            guard let newGameID else { return }
+                            selectedGame = games.first { $0.id == newGameID } ?? fallback
                         }
                     }
                 )
             }
         }
         .sheet(isPresented: $isRedeemingAdminInvite) {
-            let labelColor = Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255)
+            let labelColor = Color.appSecondaryText
             NavigationStack {
                 VStack(spacing: 0) {
                     HStack {
                         Button("Cancel") { isRedeemingAdminInvite = false }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
-                            .foregroundStyle(.black)
+                            .foregroundStyle(Color.primary)
                             .background(Color(.systemGray5), in: Capsule())
                             .buttonStyle(.plain)
 
@@ -402,7 +446,7 @@ struct MyGamesView: View {
                                 .textInputAutocapitalization(.characters)
                                 .autocorrectionDisabled()
                                 .padding()
-                                .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                                .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
                         }
 
                         Text("Ask the game's owner for their co-admin invite code (not the player join code).")
@@ -458,29 +502,73 @@ struct MyGamesView: View {
         isJoiningGame = true
     }
 
-    private func gameRow(_ game: Game, onArchive: (() -> Void)? = nil) -> some View {
+    private func gameRow(_ game: Game) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(game.name)
                     .font(.headline)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Color.primary)
                 Text("\(game.numCourts) courts  •  \(game.format.title)")
                     .font(.caption)
-                    .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
+                    .foregroundStyle(Color.appSecondaryText)
             }
             Spacer()
-            if let onArchive {
-                Button(action: onArchive) {
-                    Image(systemName: "trash")
-                        .foregroundStyle(.white)
-                        .frame(width: 36, height: 36)
-                        .background(Color.red, in: Circle())
-                }
-                .buttonStyle(.plain)
-            }
         }
         .padding()
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+        .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
+        // The card draws its own padding, so List's default row insets
+        // (~11pt top and bottom) stack on top of it and push the cards far
+        // apart. 4pt here leaves an 8pt gap between neighbouring cards.
+        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+    }
+
+    /// Trailing swipe actions, shared by every section so a row behaves the
+    /// same wherever it sits.
+    ///
+    /// Archive is declared first, which makes it the full-swipe action —
+    /// the fast gesture does the reversible thing. Delete is deliberately a
+    /// deliberate tap plus a confirmation: it cascades to the roster,
+    /// matches, and the match history of every player who was in the game,
+    /// so it destroys other people's data, not just the admin's.
+    @ViewBuilder
+    private func rowActions(for game: Game) -> some View {
+        if game.archived {
+            Button {
+                Task { await setArchived(game, archived: false) }
+            } label: {
+                Label("Unarchive", systemImage: "tray.and.arrow.up")
+            }
+            .tint(.blue)
+        } else {
+            Button {
+                Task { await setArchived(game, archived: true) }
+            } label: {
+                Label("Archive", systemImage: "archivebox")
+            }
+            .tint(.gray)
+        }
+
+        Button(role: .destructive) {
+            gamePendingDeletion = game
+        } label: {
+            Label("Delete", systemImage: "trash")
+        }
+    }
+
+    @MainActor
+    private func deleteGame(_ game: Game) async {
+        do {
+            try await supabase.from("games")
+                .delete()
+                .eq("id", value: game.id)
+                .execute()
+            if selectedGame == game { selectedGame = nil }
+            // Same reasoning as setArchived: the realtime subscription's
+            // applyGameChange already removes the row on the delete event,
+            // so reloading here would fight that animation.
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     @MainActor
@@ -507,7 +595,7 @@ struct MyGamesView: View {
 
             Image(systemName: "figure.badminton")
                 .font(.system(size: 140))
-                .foregroundStyle(Color(.black))
+                .foregroundStyle(Color.primary)
                 //.frame(width: 140, height: 293)
 
             Text("No games yet")
@@ -559,7 +647,13 @@ struct MyGamesView: View {
     }
 
     private func loadGames() async {
-        guard let userID = auth.userID else { return }
+        // Clear the flag on the way out too: this guard returns before the
+        // `isLoading = false` at the bottom, so with the flag now defaulting
+        // to true, a nil userID would otherwise spin forever.
+        guard let userID = auth.userID else {
+            isLoading = false
+            return
+        }
         isLoading = true
         do {
             if auth.role == .admin {

@@ -10,13 +10,15 @@ struct InvitePlayersView: View {
     let game: Game
     var onFinished: () -> Void
 
-    @State private var showLiveDashboard = false
+    /// Value-driven for the same reason as the previous step —
+    /// a Bool can push before the content is ready.
+    @State private var dashboardGame: Game?
 
     private var joinURL: URL {
         URL(string: "https://qourt-web.vercel.app/join/\(game.joinCode)")!
     }
 
-    private let labelColor = Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255)
+    private let labelColor = Color.appSecondaryText
     private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
 
     var body: some View {
@@ -28,7 +30,7 @@ struct InvitePlayersView: View {
 
                 Spacer()
 
-                Button("Done") { showLiveDashboard = true }
+                Button("Done") { dashboardGame = game }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
                     .foregroundStyle(.white)
@@ -56,7 +58,7 @@ struct InvitePlayersView: View {
                             .resizable()
                             .frame(width: 220, height: 220)
                             .padding()
-                            .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                            .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
                             .shadow(radius: 2)
                     }
 
@@ -91,7 +93,7 @@ struct InvitePlayersView: View {
         // to dismiss (or any dismissal that isn't this exact button) skips
         // onFinished entirely, no matter how carefully the handoff is
         // sequenced on the other end. This way there's nothing to skip.
-        .navigationDestination(isPresented: $showLiveDashboard) {
+        .navigationDestination(item: $dashboardGame) { game in
             LiveDashboardView(game: game, onExitToGamesList: onFinished)
         }
     }
