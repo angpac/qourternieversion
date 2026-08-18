@@ -44,6 +44,38 @@ targets:
       - target: QourtWidgetExtension
         embed: true
         codeSign: true
+      - target: QourtAppClip
+        embed: true
+        codeSign: true
+      - package: Supabase
+        product: Supabase
+
+  QourtAppClip:
+    type: application.on-demand-install-capable
+    platform: iOS
+    sources:
+      - path: QourtAppClip
+      - path: QourtShared/Models
+      - path: QourtShared/Networking
+      # Reused as-is from the main app for a consistent look even before a
+      # dedicated App Clip design exists — both are tiny (DIN fonts total
+      # ~230KB), nowhere near the 15MB App Clip budget.
+      - path: Qourt/Core/Fonts
+      - path: Qourt/Core/Background
+      # Just the format-name/icon lookup, not the rest of Games/Models.
+      - path: Qourt/Features/Games/Models/RotationFormat.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: net.criers.Qourt.Clip
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: QourtAppClip/Info.plist
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_ENTITLEMENTS: QourtAppClip/QourtAppClip.entitlements
+        TARGETED_DEVICE_FAMILY: "1,2"
+    dependencies:
       - package: Supabase
         product: Supabase
 
@@ -107,5 +139,11 @@ schemes:
     build:
       targets:
         "Qourt Watch App": all
+    run:
+      config: Debug
+  QourtAppClip:
+    build:
+      targets:
+        QourtAppClip: all
     run:
       config: Debug
