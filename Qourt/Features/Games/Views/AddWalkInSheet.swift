@@ -14,39 +14,99 @@ struct AddWalkInSheet: View {
     @State private var isSaving = false
 
     private let skillLevels = ["Beginner", "Intermediate", "Advanced"]
+    private let labelColor = Color.appSecondaryText
+    private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
+
+    private var isNameEmpty: Bool { name.trimmingCharacters(in: .whitespaces).isEmpty }
 
     var body: some View {
         NavigationStack {
-            Form {
-                TextField("Name", text: $name)
-                Picker("Skill level", selection: $skillLevel) {
-                    ForEach(skillLevels, id: \.self) { Text($0) }
-                }
-            }
-            .navigationTitle("Add player")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button {
-                        Task {
-                            isSaving = true
-                            await viewModel.addWalkIn(name: name, skillLevel: skillLevel)
-                            isSaving = false
+            VStack(spacing: 0) {
+                ZStack {
+                    Text("Add player")
+                        .font(.custom("DIN-Medium", size: 17))
+                        .foregroundStyle(Color.primary)
+                        .frame(maxWidth: .infinity)
+
+                    HStack {
+                        Button {
                             dismiss()
+                        } label: {
+                            Text("Cancel")
+                                .font(.custom("DIN-Medium", size: 15))
+                                .foregroundStyle(Color.primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
                         }
-                    } label: {
-                        if isSaving {
-                            ProgressView()
-                        } else {
-                            Text("Add")
+                        .background(Color(.systemGray5), in: Capsule())
+                        .buttonStyle(.plain)
+
+                        Spacer()
+
+                        Button {
+                            Task {
+                                isSaving = true
+                                await viewModel.addWalkIn(name: name, skillLevel: skillLevel)
+                                isSaving = false
+                                dismiss()
+                            }
+                        } label: {
+                            Group {
+                                if isSaving {
+                                    ProgressView()
+                                        .tint(.white)
+                                } else {
+                                    Text("Add")
+                                        .font(.custom("DIN-Medium", size: 15))
+                                        .foregroundStyle(.white)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
                         }
+                        .background(isNameEmpty ? Color(.systemGray5) : accentColor, in: Capsule())
+                        .buttonStyle(.plain)
+                        .disabled(isNameEmpty || isSaving)
                     }
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
                 }
+                .padding()
+
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Name")
+                            .font(.custom("DIN-Regular", size: 13))
+                            .foregroundStyle(labelColor)
+
+                        TextField("Name", text: $name)
+                            .font(.custom("DIN-Regular", size: 17))
+                            .padding()
+                            .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
+                    }
+
+                    HStack {
+                        Text("Skill level")
+                            .font(.custom("DIN-Regular", size: 17))
+                            .foregroundStyle(Color.primary)
+                        Spacer()
+                        Picker("Skill level", selection: $skillLevel) {
+                            ForEach(skillLevels, id: \.self) { Text($0) }
+                        }
+                        .pickerStyle(.menu)
+                        .tint(.primary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color(.systemGray5), in: Capsule())
+                    }
+                    .padding()
+                    .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
+
+                    Spacer()
+                }
+                .padding()
             }
+            .background(Color.appBackground.ignoresSafeArea())
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 }
