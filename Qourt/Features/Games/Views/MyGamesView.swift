@@ -263,14 +263,6 @@ struct MyGamesView: View {
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        // TEMPORARY — purely to verify a rebuild actually reached the
-        // device; safe to remove once that's confirmed.
-        .safeAreaInset(edge: .bottom) {
-            Text("build \(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?")")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .padding(.bottom, 4)
-        }
         .overlay(alignment: .bottomTrailing) {
             Group {
                 if auth.role == .admin {
