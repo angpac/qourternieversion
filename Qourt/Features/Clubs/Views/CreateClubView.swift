@@ -26,26 +26,27 @@ struct CreateClubView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         Text("Create a Club")
-                            .font(.custom("DIN-Regular", size: 34))
-                            .fontWeight(.bold)
+                            .font(.custom("DIN-BlackAlternate", size: 34))
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Club Name")
-                                .font(.subheadline)
+                                .font(.custom("DIN-Regular", size: 15))
                                 .foregroundStyle(labelColor)
 
                             TextField("Club Name", text: $name)
+                                .font(.custom("DIN-Regular", size: 17))
                                 .padding()
                                 .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Available Courts")
-                                .font(.subheadline)
+                                .font(.custom("DIN-Regular", size: 15))
                                 .foregroundStyle(labelColor)
 
                             HStack {
                                 Text("\(courts) Court\(courts <= 1 ? "" : "s")")
+                                    .font(.custom("DIN-Regular", size: 17))
                                     .foregroundStyle(Color.primary)
 
                                 Spacer()
@@ -103,7 +104,7 @@ struct CreateClubView: View {
                             .padding()
                     } else {
                         Text("Create Club")
-                            .font(.headline)
+                            .font(.custom("DIN-Medium", size: 16))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding()
