@@ -10,6 +10,12 @@ struct ChooseRoleView: View {
 
     var body: some View {
         VStack(spacing: 24) {
+            Image("qourtimage")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 305, height: 108)
+                .padding(.top, 110)
+
             Spacer()
 
             Text("Welcome\(auth.displayName.map { ", \($0)" } ?? "")")
@@ -17,6 +23,7 @@ struct ChooseRoleView: View {
                 .font(.custom("DIN-Regular", size: 24))
 
             Text("What are you doing today?")
+                .font(.custom("DIN-Regular", size: 15))
                 .foregroundStyle(.secondary)
 
             VStack(spacing: 16) {
@@ -43,6 +50,8 @@ struct ChooseRoleView: View {
             .padding(.horizontal, 24)
 
             Spacer()
+            Spacer()
+            Spacer()
         }
         .buttonStyle(.plain)
     }
@@ -63,10 +72,10 @@ private struct RoleCard: View {
             VStack(alignment: .leading) {
                 Text(title)
                     //.font(.headline)
-                    .font(.custom("DIN-Regular", size: 16))
+                    .font(.custom("DIN-Regular", size: 20))
                 Text(subtitle)
                     //.font(.subheadline)
-                    .font(.custom("DIN-Regular", size: 12))
+                    .font(.custom("DIN-Regular", size: 14))
                     .foregroundStyle(.secondary)
             }
 
