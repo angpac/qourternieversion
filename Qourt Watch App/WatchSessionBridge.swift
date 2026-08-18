@@ -48,6 +48,10 @@ final class WatchSessionBridge: NSObject {
 
         if context[WatchSessionPayload.signedOutKey] as? Bool == true {
             Task { @MainActor in
+                // Same ordering as the phone: retire this Watch's token while
+                // the session is still valid, or it keeps receiving pushes for
+                // the account that just signed out.
+                await PushNotificationManager.unregisterCurrentDevice()
                 try? await supabase.auth.signOut()
                 isSignedIn = false
             }

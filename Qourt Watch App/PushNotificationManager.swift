@@ -9,6 +9,8 @@ import UserNotifications
 import WatchKit
 
 enum PushNotificationManager {
+    private static let storedTokenKey = "qourt.apnsDeviceToken"
+
     @MainActor
     static func requestAuthorizationAndRegister() async {
         let center = UNUserNotificationCenter.current()
@@ -18,20 +20,35 @@ enum PushNotificationManager {
     }
 
     static func upload(deviceToken: Data) async {
-        guard let userID = (try? await supabase.auth.session)?.user.id else { return }
+        guard (try? await supabase.auth.session) != nil else { return }
         let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
 
-        struct DeviceTokenUpsert: Encodable {
-            let profile_id: UUID
-            let device_token: String
-            let platform: String
+        struct Params: Encodable {
+            let p_device_token: String
+            let p_platform: String
         }
 
-        _ = try? await supabase.from("apns_device_tokens")
-            .upsert(
-                DeviceTokenUpsert(profile_id: userID, device_token: token, platform: "watchos"),
-                onConflict: "device_token"
-            )
-            .execute()
+        // Security definer RPC, same reason as on the phone: a token row left
+        // behind by a previous account can't be reassigned through RLS.
+        do {
+            try await supabase.rpc(
+                "register_device_token",
+                params: Params(p_device_token: token, p_platform: "watchos")
+            ).execute()
+            UserDefaults.standard.set(token, forKey: storedTokenKey)
+        } catch {
+            // Push stays off this launch; the next registration retries.
+        }
+    }
+
+    /// Retires this Watch's token when the phone reports a sign-out.
+    static func unregisterCurrentDevice() async {
+        guard let token = UserDefaults.standard.string(forKey: storedTokenKey) else { return }
+        struct Params: Encodable { let p_device_token: String }
+        _ = try? await supabase.rpc(
+            "unregister_device_token",
+            params: Params(p_device_token: token)
+        ).execute()
+        UserDefaults.standard.removeObject(forKey: storedTokenKey)
     }
 }

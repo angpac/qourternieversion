@@ -150,6 +150,10 @@ final class AuthViewModel {
 
     @MainActor
     func signOut() async {
+        // Before signOut: the RPC is scoped to auth.uid(), so once the
+        // session is gone the row can no longer be found — and it would keep
+        // this device receiving the previous account's notifications.
+        await PushNotificationManager.unregisterCurrentDevice()
         try? await supabase.auth.signOut()
         userID = nil
         displayName = nil

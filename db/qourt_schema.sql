@@ -166,6 +166,10 @@ create table game_players (
   status player_status not null default 'queued',
   queue_position int,
   joined_at timestamptz not null default now(),
+  -- Stamped when the player has been told their turn is near, so a queue
+  -- that shuffles repeatedly can't notify them over and over. Cleared on
+  -- re-entering the queue.
+  turn_soon_notified_at timestamptz,
   unique (game_id, profile_id)
 );
 
@@ -197,7 +201,9 @@ create table apns_device_tokens (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid not null references profiles (id) on delete cascade,
   device_token text not null unique,
-  platform text not null check (platform in ('ios', 'watchos')),
+  -- 'appclip' is a separate bundle id and therefore a separate APNs
+  -- topic; send-push maps platform -> topic.
+  platform text not null check (platform in ('ios', 'watchos', 'appclip')),
   created_at timestamptz not null default now()
 );
 
@@ -1420,3 +1426,139 @@ $$;
 create trigger push_on_announcement
   after insert on announcements
   for each row execute function public.trigger_push_on_announcement();
+
+-- Clears the "turn is near" stamp whenever a player re-enters the queue,
+-- so a later session notifies them again.
+create or replace function public.reset_turn_soon_notice()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.status = 'queued' and old.status is distinct from 'queued' then
+    new.turn_soon_notified_at := null;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger reset_turn_soon_notice
+  before update on game_players
+  for each row execute function public.reset_turn_soon_notice();
+
+-- Everyone behind a player who leaves the queue moves up, so that is the
+-- only moment positions actually change. Firing on every game_players
+-- update would push a webhook on unrelated edits and hammer the function.
+create or replace function public.trigger_push_on_queue_advanced()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- NEW is unassigned in a DELETE trigger: referencing new.game_id there
+  -- raises "record new is not assigned yet" and would abort the delete.
+  -- So the two operations are handled separately rather than coalesced.
+  if tg_op = 'DELETE' then
+    if old.status = 'queued' then
+      perform public.notify_send_push(jsonb_build_object(
+        'type', 'queue_advanced',
+        'game_id', old.game_id
+      ));
+    end if;
+    return old;
+  end if;
+
+  if old.status = 'queued' and new.status is distinct from 'queued' then
+    perform public.notify_send_push(jsonb_build_object(
+      'type', 'queue_advanced',
+      'game_id', new.game_id
+    ));
+  end if;
+  return new;
+end;
+$$;
+
+create trigger push_on_queue_advanced
+  after update or delete on game_players
+  for each row execute function public.trigger_push_on_queue_advanced();
+
+-- 'removed' is quitting, 'resting' is stepping out for a round. Both leave
+-- the host a gap to fill, which is the point of the nudge.
+create or replace function public.trigger_push_on_player_left()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if old.status is distinct from new.status
+     and new.status in ('removed', 'resting') then
+    perform public.notify_send_push(jsonb_build_object(
+      'type', 'player_left',
+      'game_player_id', new.id,
+      'new_status', new.status::text
+    ));
+  end if;
+  return new;
+end;
+$$;
+
+create trigger push_on_player_left
+  after update on game_players
+  for each row execute function public.trigger_push_on_player_left();
+
+create or replace function public.register_device_token(
+  p_device_token text,
+  p_platform text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_profile uuid := auth.uid();
+begin
+  if v_profile is null then
+    raise exception 'not authenticated';
+  end if;
+
+  -- Mirrors the table's own check constraint. Validated here too so a bad
+  -- client can't get a confusing constraint error from inside the function.
+  if p_platform not in ('ios', 'watchos', 'appclip') then
+    raise exception 'unsupported platform: %', p_platform;
+  end if;
+
+  insert into apns_device_tokens (profile_id, device_token, platform)
+  values (v_profile, p_device_token, p_platform)
+  on conflict (device_token) do update
+    set profile_id = excluded.profile_id,
+        platform   = excluded.platform,
+        created_at = now();
+end;
+$$;
+
+revoke all on function public.register_device_token(text, text) from public;
+grant execute on function public.register_device_token(text, text) to authenticated;
+
+-- Sign-out cleanup. Scoped to one token on purpose: deleting every token for
+-- the profile would silently disable push on that person's other devices.
+create or replace function public.unregister_device_token(p_device_token text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    return;
+  end if;
+
+  delete from apns_device_tokens
+   where device_token = p_device_token
+     and profile_id = auth.uid();
+end;
+$$;
+
+revoke all on function public.unregister_device_token(text) from public;
+grant execute on function public.unregister_device_token(text) to authenticated;
