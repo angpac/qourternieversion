@@ -12,9 +12,11 @@ struct PlayerLiveStatusView: View {
     @State private var isShowingRoster = false
     @State private var isShowingHistory = false
     @State private var isShowingPicker = false
+    private let skipsInitialLoad: Bool
 
-    init(game: Game) {
-        _viewModel = State(initialValue: PlayerLiveStatusViewModel(game: game))
+    init(game: Game, previewViewModel: PlayerLiveStatusViewModel? = nil) {
+        _viewModel = State(initialValue: previewViewModel ?? PlayerLiveStatusViewModel(game: game))
+        skipsInitialLoad = previewViewModel != nil
     }
 
     var body: some View {
@@ -98,8 +100,14 @@ struct PlayerLiveStatusView: View {
                 }
             }
         }
-        .task { await viewModel.start() }
-        .onDisappear { viewModel.stop() }
+        .task {
+            guard !skipsInitialLoad else { return }
+            await viewModel.start()
+        }
+        .onDisappear {
+            guard !skipsInitialLoad else { return }
+            viewModel.stop()
+        }
         .refreshable { await viewModel.loadAll() }
         .sheet(isPresented: $isShowingPicker) {
             PickerSheet(viewModel: viewModel)
@@ -366,19 +374,50 @@ struct PlayerLiveStatusView: View {
     }
 }
 
+private let previewGame = Game(
+    id: UUID(),
+    name: "Sunday Open Play",
+    location: nil,
+    startsAt: nil,
+    numCourts: 4,
+    isDoubles: true,
+    format: .kingOfTheCourt,
+    formatSettings: [:],
+    joinCode: "ABC123",
+    status: "live"
+)
+
+#Preview("With announcement") {
+    let vm = PlayerLiveStatusViewModel(game: previewGame)
+    vm.isLoading = false
+    vm.myPlayer = GamePlayer(
+        id: UUID(),
+        gameId: previewGame.id,
+        profileId: nil,
+        displayName: "Awan Minton",
+        skillLevel: "Advanced",
+        status: .queued,
+        queuePosition: 3,
+        joinedAt: Date()
+    )
+    vm.queuePosition = 3
+    vm.announcements = [
+        Announcement(
+            id: UUID(),
+            gameId: previewGame.id,
+            senderId: UUID(),
+            targetPlayerId: nil,
+            message: "Court 2 is closed for the next round, sorry for the inconvenience!",
+            sentAt: Date()
+        )
+    ]
+    return NavigationStack {
+        PlayerLiveStatusView(game: previewGame, previewViewModel: vm)
+    }
+}
+
 #Preview {
     NavigationStack {
-        PlayerLiveStatusView(game: Game(
-            id: UUID(),
-            name: "Sunday Open Play",
-            location: nil,
-            startsAt: nil,
-            numCourts: 4,
-            isDoubles: true,
-            format: .kingOfTheCourt,
-            formatSettings: [:],
-            joinCode: "ABC123",
-            status: "live"
-        ))
+        PlayerLiveStatusView(game: previewGame)
     }
 }
