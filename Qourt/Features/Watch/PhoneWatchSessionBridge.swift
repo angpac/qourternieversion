@@ -42,6 +42,15 @@ final class PhoneWatchSessionBridge: NSObject {
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
         guard session.activationState == .activated else { return }
+        // Pushing before the Watch app registers as installed fails with
+        // WCErrorCodeWatchAppNotInstalled, and the failure arrives
+        // asynchronously — so it can't be caught below and would leave
+        // lastSentAccessToken falsely marked as delivered. Bail out and let
+        // sessionWatchStateDidChange retry once the Watch is ready.
+        guard session.isPaired, session.isWatchAppInstalled else {
+            lastSentAccessToken = nil
+            return
+        }
 
         guard let authSession = try? await supabase.auth.session else {
             // Signed out on the phone — tell the Watch to drop its session
@@ -80,6 +89,21 @@ extension PhoneWatchSessionBridge: WCSessionDelegate {
     func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         guard message[WatchSessionPayload.requestKey] as? Bool == true else { return }
         lastSentAccessToken = nil        // force a resend
+        Task { await syncSessionToWatch() }
+    }
+
+    /// Fires when the Watch is paired/unpaired or the Watch app is
+    /// installed/removed. This is the retry that recovers the failed first
+    /// push above.
+    func sessionWatchStateDidChange(_ session: WCSession) {
+        lastSentAccessToken = nil
+        Task { await syncSessionToWatch() }
+    }
+
+    /// The Watch coming back into range is another chance to deliver a
+    /// session it never received.
+    func sessionReachabilityDidChange(_ session: WCSession) {
+        guard session.isReachable else { return }
         Task { await syncSessionToWatch() }
     }
 

@@ -78,4 +78,11 @@ extension WatchSessionBridge: WCSessionDelegate {
     func session(_ session: WCSession, didReceiveApplicationContext context: [String: Any]) {
         apply(context: context)
     }
+
+    /// If the phone was out of range when this app launched, the request
+    /// above went nowhere. Ask again the moment it comes back.
+    func sessionReachabilityDidChange(_ session: WCSession) {
+        guard session.isReachable, !isSignedIn else { return }
+        requestSessionFromPhone()
+    }
 }
