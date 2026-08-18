@@ -39,7 +39,7 @@ struct PickerSheet: View {
                                 selected.removeAll { $0.id == player.id }
                             } label: {
                                 HStack {
-                                    Text(player.displayName).foregroundStyle(.primary)
+                                    Text(player.displayName).foregroundStyle(Color.primary)
                                     Spacer()
                                     Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                                 }
@@ -54,7 +54,7 @@ struct PickerSheet: View {
                             toggle(player)
                         } label: {
                             HStack {
-                                Text(player.displayName).foregroundStyle(.primary)
+                                Text(player.displayName).foregroundStyle(Color.primary)
                                 Spacer()
                                 Text(player.skillLevel)
                                     .font(.caption)

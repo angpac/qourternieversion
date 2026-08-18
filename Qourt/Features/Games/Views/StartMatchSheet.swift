@@ -14,7 +14,7 @@ struct StartMatchSheet: View {
     @State private var teamB: [GamePlayer] = []
     @State private var isStarting = false
 
-    private let labelColor = Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255)
+    private let labelColor = Color.appSecondaryText
     private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
 
     private var perTeam: Int { viewModel.playersPerTeam(for: court) }
@@ -28,7 +28,7 @@ struct StartMatchSheet: View {
                     Button("Cancel") { dismiss() }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
-                        .foregroundStyle(.black)
+                        .foregroundStyle(Color.primary)
                         .background(Color(.systemGray5), in: Capsule())
                         .buttonStyle(.plain)
 
@@ -55,7 +55,7 @@ struct StartMatchSheet: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
-                    .foregroundStyle(canStart ? .white : .black)
+                    .foregroundStyle(canStart ? Color.white : Color.primary)
                     .background(canStart ? accentColor : Color(.systemGray5), in: Capsule())
                     .buttonStyle(.plain)
                     .disabled(!canStart || isStarting)
@@ -84,7 +84,7 @@ struct StartMatchSheet: View {
                                     } label: {
                                         HStack {
                                             Text(player.displayName)
-                                                .foregroundStyle(.primary)
+                                                .foregroundStyle(Color.primary)
                                             Spacer()
                                             Text(player.skillLevel)
                                                 .font(.caption)
@@ -103,7 +103,7 @@ struct StartMatchSheet: View {
                                     }
                                 }
                             }
-                            .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                            .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
                         }
                     }
                     .padding(.horizontal)
@@ -158,7 +158,7 @@ struct StartMatchSheet: View {
                         } label: {
                             HStack {
                                 Text(player.displayName)
-                                    .foregroundStyle(.primary)
+                                    .foregroundStyle(Color.primary)
                                 Spacer()
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundStyle(.secondary)
@@ -176,7 +176,7 @@ struct StartMatchSheet: View {
                     }
                 }
             }
-            .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+            .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
         }
     }
 }

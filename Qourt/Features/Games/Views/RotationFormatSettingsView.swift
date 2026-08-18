@@ -11,7 +11,18 @@ struct RotationFormatSettingsView: View {
     var onFinished: () -> Void
 
     @State private var isCreating = false
-    @State private var navigateToInvite = false
+    /// Drives the push by VALUE, not by a Bool.
+    ///
+    /// This was `@State private var navigateToInvite = false` paired with
+    /// `navigationDestination(isPresented:)` whose body was
+    /// `if let game = viewModel.createdGame { ... }`. Those are two
+    /// independent pieces of state: the flag says "push now" while the
+    /// optional says "here's what to show". If the push resolved while the
+    /// optional read as nil, SwiftUI pushed an EMPTY destination — the blank
+    /// white screen, with the game already inserted in the database. Holding
+    /// the game itself means there is nothing to push until there's
+    /// something to show.
+    @State private var createdGame: Game?
 
     var body: some View {
         Form {
@@ -101,8 +112,16 @@ struct RotationFormatSettingsView: View {
                         isCreating = true
                         let success = await viewModel.createGame(ownerID: userID)
                         isCreating = false
+                        // Only navigate once the game is actually in hand.
+                        // If creation reported success but produced no game,
+                        // surface it rather than pushing a blank screen and
+                        // leaving the admin to create a duplicate.
                         if success {
-                            navigateToInvite = true
+                            if let game = viewModel.createdGame {
+                                createdGame = game
+                            } else {
+                                viewModel.errorMessage = "The game was created but couldn't be opened. Pull to refresh your games list."
+                            }
                         }
                     }
                 } label: {
@@ -119,10 +138,8 @@ struct RotationFormatSettingsView: View {
         .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("Rotation settings")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(isPresented: $navigateToInvite) {
-            if let game = viewModel.createdGame {
-                InvitePlayersView(game: game, onFinished: onFinished)
-            }
+        .navigationDestination(item: $createdGame) { game in
+            InvitePlayersView(game: game, onFinished: onFinished)
         }
     }
 }

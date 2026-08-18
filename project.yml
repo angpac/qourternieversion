@@ -108,6 +108,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: net.criers.Qourt.watchkitapp
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: "Qourt Watch App/Info.plist"
         SDKROOT: watchos
         TARGETED_DEVICE_FAMILY: 4
         SKIP_INSTALL: YES

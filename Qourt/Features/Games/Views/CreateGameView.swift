@@ -34,7 +34,7 @@ struct CreateGameView: View {
                             locationSearch.clearSuggestions()
                         } label: {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(suggestion.title).foregroundStyle(.primary)
+                                Text(suggestion.title).foregroundStyle(Color.primary)
                                 if !suggestion.subtitle.isEmpty {
                                     Text(suggestion.subtitle)
                                         .font(.caption)
@@ -122,7 +122,7 @@ struct CreateGameView: View {
                                         Text(format.subtitle)
                                             .font(.caption)
                                     }
-                                    .foregroundStyle(isSelected ? .white : Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
+                                    .foregroundStyle(isSelected ? .white : Color.appSecondaryText)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding()
                                     .background(

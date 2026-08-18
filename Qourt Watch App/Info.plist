@@ -2,15 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Required at the top level for App Store validation (ITMS-90713).
+	     actool only emits it nested inside CFBundlePrimaryIcon. -->
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
-	<key>UIAppFonts</key>
-	<array>
-		<string>DIN-BlackAlternate.ttf</string>
-		<string>DIN-Bold.ttf</string>
-		<string>DIN-Light.ttf</string>
-		<string>DIN-Medium.ttf</string>
-		<string>DIN-Regular.ttf</string>
-	</array>
 </dict>
 </plist>

@@ -23,6 +23,9 @@ struct ContentView: View {
                 MyGamesView(auth: auth)
             }
         }
+        // Fill the window before painting: a root view that is still sizing
+        // itself would otherwise leave bare white around the background.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.appBackground.ignoresSafeArea())
         .environment(\.font, .custom("DIN-Regular", size: 17))
         .task {

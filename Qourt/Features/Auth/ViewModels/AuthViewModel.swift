@@ -28,6 +28,11 @@ final class AuthViewModel {
         do {
             let session = try await supabase.auth.session
             userID = session.user.id
+
+            // Hand the fresh session to the Watch immediately. Without this
+            // the Watch stays signed out until the next cold launch of the
+            // phone app.
+            await PhoneWatchSessionBridge.shared.syncSessionToWatch()
             await loadProfile()
         } catch {
             userID = nil
@@ -145,9 +150,16 @@ final class AuthViewModel {
 
     @MainActor
     func signOut() async {
+        // Before signOut: the RPC is scoped to auth.uid(), so once the
+        // session is gone the row can no longer be found — and it would keep
+        // this device receiving the previous account's notifications.
+        await PushNotificationManager.unregisterCurrentDevice()
         try? await supabase.auth.signOut()
         userID = nil
         displayName = nil
         role = nil
+        // Tells the Watch to clear its session too, so it can't keep
+        // showing a queue position for a signed-out account.
+        await PhoneWatchSessionBridge.shared.syncSessionToWatch()
     }
 }

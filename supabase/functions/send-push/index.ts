@@ -1,6 +1,8 @@
-// Sends push notifications on two events (see the DB triggers that call
-// this): a player getting assigned to a fresh match ("you're up!"), and an
-// admin sending an announcement. Delivers over two separate paths per
+// Sends push notifications on the events the DB triggers fire:
+//   match_assigned  - a player is put on court ("you're up!")
+//   announcement    - an admin messages the game
+//   queue_advanced  - the queue moved; players near the front get a heads-up
+//   player_left     - someone quit or stepped out; the host gets a nudge Delivers over two separate paths per
 // CLAUDE.md — APNs for the iPhone app + Watch, Web Push (VAPID) for browser
 // guests — no third-party push vendor for either.
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -16,6 +18,25 @@ const APNS_TEAM_ID = Deno.env.get("APNS_TEAM_ID");
 const APNS_KEY_ID = Deno.env.get("APNS_KEY_ID");
 const APNS_AUTH_KEY = Deno.env.get("APNS_AUTH_KEY"); // .p8 file contents, PEM format
 const APNS_BUNDLE_ID = Deno.env.get("APNS_BUNDLE_ID") ?? "net.criers.Qourt";
+// The Watch app and the App Clip are separate bundle ids, so APNs treats
+// them as separate topics — a token from either is rejected under the
+// iOS topic. The App Clip id is env-overridable because the clip target
+// isn't built yet and its final id may differ.
+const APNS_WATCH_BUNDLE_ID = Deno.env.get("APNS_WATCH_BUNDLE_ID") ?? `${APNS_BUNDLE_ID}.watchkitapp`;
+const APNS_APPCLIP_BUNDLE_ID = Deno.env.get("APNS_APPCLIP_BUNDLE_ID") ?? `${APNS_BUNDLE_ID}.Clip`;
+
+type Platform = "ios" | "watchos" | "appclip";
+
+function apnsTopic(platform: Platform): string {
+  switch (platform) {
+    case "watchos":
+      return APNS_WATCH_BUNDLE_ID;
+    case "appclip":
+      return APNS_APPCLIP_BUNDLE_ID;
+    default:
+      return APNS_BUNDLE_ID;
+  }
+}
 
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY");
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY");
@@ -45,7 +66,7 @@ async function apnsJwt(): Promise<string | null> {
   return token;
 }
 
-async function sendApns(deviceToken: string, title: string, body: string) {
+async function sendApns(deviceToken: string, title: string, body: string, platform: Platform = "ios") {
   const jwt = await apnsJwt();
   if (!jwt) return; // APNs not configured yet — no-op, don't fail the batch
   try {
@@ -53,7 +74,7 @@ async function sendApns(deviceToken: string, title: string, body: string) {
       method: "POST",
       headers: {
         authorization: `bearer ${jwt}`,
-        "apns-topic": APNS_BUNDLE_ID,
+        "apns-topic": apnsTopic(platform),
         "apns-push-type": "alert",
         "apns-priority": "10",
       },
@@ -131,10 +152,10 @@ async function notifyGamePlayer(gamePlayerId: string, title: string, body: strin
   if (player?.profile_id) {
     const { data: tokens } = await supabase
       .from("apns_device_tokens")
-      .select("device_token")
+      .select("device_token, platform")
       .eq("profile_id", player.profile_id);
     for (const row of tokens ?? []) {
-      sends.push(sendApns(row.device_token, title, body));
+      sends.push(sendApns(row.device_token, title, body, row.platform as Platform));
     }
   }
 
@@ -147,6 +168,145 @@ async function notifyGamePlayer(gamePlayerId: string, title: string, body: strin
   }
 
   await Promise.all(sends);
+}
+
+/// Sends to every device a signed-in profile owns — phone, Watch, App Clip.
+/// Used for hosts, who are not necessarily rows in game_players.
+async function notifyProfile(profileId: string, title: string, body: string) {
+  const { data: tokens } = await supabase
+    .from("apns_device_tokens")
+    .select("device_token, platform")
+    .eq("profile_id", profileId);
+
+  await Promise.all(
+    (tokens ?? []).map((row) => sendApns(row.device_token, title, body, row.platform as Platform))
+  );
+}
+
+/// Everyone who administers a game: its owner, its explicit co-admins, and
+/// — if the game is linked to a club — that club's owner and admins. Mirrors
+/// the is_game_admin() inheritance in the schema.
+async function gameAdminProfileIds(gameId: string): Promise<string[]> {
+  const ids = new Set<string>();
+
+  const { data: game } = await supabase
+    .from("games")
+    .select("owner_id, club_id")
+    .eq("id", gameId)
+    .single();
+  if (!game) return [];
+  if (game.owner_id) ids.add(game.owner_id);
+
+  const { data: coAdmins } = await supabase
+    .from("game_admins")
+    .select("profile_id")
+    .eq("game_id", gameId);
+  for (const row of coAdmins ?? []) ids.add(row.profile_id);
+
+  if (game.club_id) {
+    const { data: club } = await supabase
+      .from("clubs")
+      .select("owner_id")
+      .eq("id", game.club_id)
+      .single();
+    if (club?.owner_id) ids.add(club.owner_id);
+
+    const { data: clubAdmins } = await supabase
+      .from("club_admins")
+      .select("profile_id")
+      .eq("club_id", game.club_id);
+    for (const row of clubAdmins ?? []) ids.add(row.profile_id);
+  }
+
+  return [...ids];
+}
+
+/// "Your turn is coming up" for whoever is now within one match of playing.
+///
+/// Fired whenever someone leaves the queue, which is the only moment
+/// positions shift. Each player is told once per stint in the queue —
+/// turn_soon_notified_at is the guard, and a BEFORE UPDATE trigger clears it
+/// when they re-queue, so a queue that churns can't spam the same person.
+async function handleQueueAdvanced(gameId: string) {
+  const { data: game } = await supabase
+    .from("games")
+    .select("name, is_doubles, status")
+    .eq("id", gameId)
+    .single();
+  if (!game) return;
+  // A draft or finished game has no meaningful "next up".
+  if (game.status !== "live") return;
+
+  const matchSize = game.is_doubles ? 4 : 2;
+
+  const { data: queued } = await supabase
+    .from("game_players")
+    .select("id, turn_soon_notified_at")
+    .eq("game_id", gameId)
+    .eq("status", "queued")
+    .order("queue_position", { ascending: true, nullsFirst: false })
+    .order("joined_at", { ascending: true })
+    .limit(matchSize);
+
+  const candidates = (queued ?? []).filter((p) => p.turn_soon_notified_at === null);
+  if (candidates.length === 0) return;
+
+  // Claim before sending, not after.
+  //
+  // Putting four players on court flips four rows out of the queue, so this
+  // trigger fires four times and four invocations run concurrently. If each
+  // read "not yet notified", sent, and only then stamped, every up-next
+  // player would get four identical pushes. The `is null` predicate makes
+  // the claim atomic per row: exactly one invocation wins each row, and
+  // `select()` returns only the rows this one actually claimed.
+  const { data: claimed } = await supabase
+    .from("game_players")
+    .update({ turn_soon_notified_at: new Date().toISOString() })
+    .in("id", candidates.map((p) => p.id))
+    .is("turn_soon_notified_at", null)
+    .select("id");
+
+  if (!claimed || claimed.length === 0) return;
+
+  await Promise.all(
+    claimed.map((player) =>
+      notifyGamePlayer(
+        player.id,
+        "You're up next",
+        `Get ready — you're in the next match at ${game.name}.`
+      )
+    )
+  );
+}
+
+/// Nudges the host when a player quits ('removed') or steps out ('resting'),
+/// since either leaves a gap the host has to fill.
+async function handlePlayerLeft(gamePlayerId: string, newStatus: string) {
+  const { data: player } = await supabase
+    .from("game_players")
+    .select("display_name, game_id")
+    .eq("id", gamePlayerId)
+    .single();
+  if (!player) return;
+
+  const { data: game } = await supabase
+    .from("games")
+    .select("name, status")
+    .eq("id", player.game_id)
+    .single();
+  // Includes 'paused': an admin who paused the session still needs to know
+  // someone dropped out, since that's often exactly why they'd resume with a
+  // different lineup. Only draft and ended games are silent.
+  if (!game || (game.status !== "live" && game.status !== "paused")) return;
+
+  const quit = newStatus === "removed";
+  const title = quit ? "Player left" : "Player stepped out";
+  const body = quit
+    ? `${player.display_name} left ${game.name}. The queue may need a rebalance.`
+    : `${player.display_name} is sitting out at ${game.name}.`;
+
+  const adminIds = await gameAdminProfileIds(player.game_id);
+  await Promise.all(adminIds.map((id) => notifyProfile(id, title, body)));
 }
 
 async function handleMatchAssigned(matchId: string, gamePlayerId: string) {
@@ -244,6 +404,10 @@ Deno.serve(async (req) => {
       await handleMatchAssigned(payload.match_id, payload.game_player_id);
     } else if (payload.type === "announcement") {
       await handleAnnouncement(payload.announcement_id);
+    } else if (payload.type === "queue_advanced") {
+      await handleQueueAdvanced(payload.game_id);
+    } else if (payload.type === "player_left") {
+      await handlePlayerLeft(payload.game_player_id, payload.new_status);
     }
   } catch (error) {
     console.error("send-push failed", error);
