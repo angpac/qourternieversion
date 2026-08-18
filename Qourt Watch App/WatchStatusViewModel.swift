@@ -209,7 +209,7 @@ final class WatchStatusViewModel {
             realtimeSubscriptions.append(subscription)
         }
 
-        await channel.subscribe()
+        try? await channel.subscribeWithError()
     }
 
     @MainActor

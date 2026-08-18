@@ -206,7 +206,7 @@ final class WatchHostViewModel {
             realtimeSubscriptions.append(subscription)
         }
 
-        await channel.subscribe()
+        try? await channel.subscribeWithError()
     }
 
     @MainActor
