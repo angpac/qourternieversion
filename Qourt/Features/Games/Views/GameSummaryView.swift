@@ -24,55 +24,122 @@ struct GameSummaryView: View {
     @State private var templateSaveError: String?
     @State private var didSaveTemplate = false
 
+    private let labelColor = Color.appSecondaryText
+    private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
+
     var body: some View {
         Group {
             if isLoading {
                 ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List {
                     Section {
-                        LabeledContent("Matches played", value: "\(totalMatches)")
+                        VStack(spacing: 4) {
+                            Text("\(totalMatches)")
+                                .font(.custom("DIN-BlackAlternate", size: 44))
+                                .foregroundStyle(Color.primary)
+                            Text("Matches played")
+                                .font(.custom("DIN-Regular", size: 15))
+                                .foregroundStyle(labelColor)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                     }
 
                     if let standout = tallies.max(by: { $0.wins < $1.wins }), standout.wins > 0 {
-                        Section("Standout performer") {
+                        Section {
                             HStack {
-                                Image(systemName: "star.fill").foregroundStyle(.yellow)
+                                Image(systemName: "star.fill")
+                                    .foregroundStyle(.yellow)
                                 Text(standout.name)
+                                    .font(.custom("DIN-Medium", size: 17))
+                                    .foregroundStyle(Color.primary)
                                 Spacer()
                                 Text("\(standout.wins) wins")
-                                    .foregroundStyle(.secondary)
+                                    .font(.custom("DIN-Regular", size: 15))
+                                    .foregroundStyle(labelColor)
                             }
+                            .padding()
+                            .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                        } header: {
+                            Text("Standout performer")
+                                .font(.custom("DIN-Regular", size: 15))
+                                .foregroundStyle(labelColor)
                         }
                     }
 
-                    Section("Games per player") {
-                        ForEach(tallies.sorted { $0.gamesPlayed > $1.gamesPlayed }) { tally in
-                            HStack {
-                                Text(tally.name)
-                                Spacer()
-                                Text("\(tally.gamesPlayed) played · \(tally.wins) won")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                    Section {
+                        VStack(spacing: 0) {
+                            let sorted = tallies.sorted { $0.gamesPlayed > $1.gamesPlayed }
+                            ForEach(sorted) { tally in
+                                HStack {
+                                    Text(tally.name)
+                                        .font(.custom("DIN-Regular", size: 17))
+                                        .foregroundStyle(Color.primary)
+                                    Spacer()
+                                    Text("\(tally.gamesPlayed) played · \(tally.wins) won")
+                                        .font(.custom("DIN-Regular", size: 13))
+                                        .foregroundStyle(labelColor)
+                                }
+                                .padding()
+
+                                if tally.id != sorted.last?.id {
+                                    Rectangle()
+                                        .fill(labelColor.opacity(0.15))
+                                        .frame(height: 1)
+                                        .padding(.horizontal)
+                                }
                             }
                         }
+                        .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                    } header: {
+                        Text("Games per player")
+                            .font(.custom("DIN-Regular", size: 15))
+                            .foregroundStyle(labelColor)
                     }
 
                     Section {
                         if didSaveTemplate {
                             Label("Saved as template", systemImage: "checkmark.circle.fill")
-                                .foregroundStyle(.green)
+                                .font(.custom("DIN-Medium", size: 16))
+                                .foregroundStyle(accentColor)
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
                         } else {
-                            Button("Save this setup as a template") {
+                            Button {
                                 templateName = game.name
                                 templateSaveError = nil
                                 isSavingTemplate = true
+                            } label: {
+                                Text("Save this setup as a template")
+                                    .font(.custom("DIN-Medium", size: 16))
+                                    .foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
                             }
+                            .background(accentColor, in: Capsule())
+                            .buttonStyle(.plain)
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                         }
                     }
                 }
+                .scrollContentBackground(.hidden)
             }
         }
+        .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("Game summary")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }

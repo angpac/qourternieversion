@@ -12,6 +12,9 @@ struct ManageCourtsView: View {
     @State private var courtToRename: Court?
     @State private var renameText = ""
 
+    private let labelColor = Color.appSecondaryText
+    private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
+
     var body: some View {
         List {
             Section {
@@ -22,17 +25,27 @@ struct ManageCourtsView: View {
                     } label: {
                         courtRow(court)
                     }
+                    .buttonStyle(.plain)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                 }
                 .onMove(perform: viewModel.canReorderCourts ? move : nil)
             } footer: {
                 if !viewModel.canReorderCourts {
                     if viewModel.isKingOfTheCourt {
                         Text("Reordering is only available between rounds, so it can't scramble a ladder that's mid-round.")
+                            .font(.custom("DIN-Regular", size: 13))
+                            .foregroundStyle(labelColor)
                     } else {
                         Text("This format's courts can't be manually reordered.")
+                            .font(.custom("DIN-Regular", size: 13))
+                            .foregroundStyle(labelColor)
                     }
                 } else if viewModel.isKingOfTheCourt {
                     Text("Order matters here: the bottom court is where the ladder starts, the top court is the King's Court.")
+                        .font(.custom("DIN-Regular", size: 13))
+                        .foregroundStyle(labelColor)
                 }
             }
 
@@ -40,6 +53,8 @@ struct ManageCourtsView: View {
                 ForEach(sortedCourts.filter { !$0.isLaneSplit }) { court in
                     HStack {
                         Text(court.name)
+                            .font(.custom("DIN-Regular", size: 17))
+                            .foregroundStyle(Color.primary)
                         Spacer()
                         Menu {
                             Button("Game default (\(viewModel.game.isDoubles ? "Doubles" : "Singles"))") {
@@ -53,22 +68,38 @@ struct ManageCourtsView: View {
                             }
                         } label: {
                             Text(formatLabel(for: court))
-                                .font(.caption.bold())
+                                .font(.custom("DIN-Medium", size: 13))
+                                .foregroundStyle(Color.primary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color(.systemGray5), in: Capsule())
                         }
                     }
+                    .padding()
+                    .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                 }
             } header: {
                 Text("Court format")
+                    .font(.custom("DIN-Regular", size: 15))
+                    .foregroundStyle(labelColor)
             } footer: {
                 Text("Run a mixed session — most courts doubles, one set aside for singles (or the other way around).")
+                    .font(.custom("DIN-Regular", size: 13))
+                    .foregroundStyle(labelColor)
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("Courts")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if viewModel.canReorderCourts {
                 ToolbarItem(placement: .primaryAction) {
                     EditButton()
+                        .tint(accentColor)
                 }
             }
         }
@@ -103,13 +134,21 @@ struct ManageCourtsView: View {
     @ViewBuilder
     private func courtRow(_ court: Court) -> some View {
         HStack {
-            Text(court.name).foregroundStyle(Color.primary)
+            Text(court.name)
+                .font(.custom("DIN-Medium", size: 17))
+                .foregroundStyle(Color.primary)
             if court.isChallengeCourt {
-                Image(systemName: "flame.fill").foregroundStyle(.orange).font(.caption)
+                Image(systemName: "flame.fill")
+                    .foregroundStyle(.orange)
+                    .font(.custom("DIN-Regular", size: 13))
             }
             Spacer()
-            Image(systemName: "pencil").font(.caption).foregroundStyle(.secondary)
+            Image(systemName: "pencil")
+                .font(.custom("DIN-Regular", size: 13))
+                .foregroundStyle(accentColor)
         }
+        .padding()
+        .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
     }
 }
 

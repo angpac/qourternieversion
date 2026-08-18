@@ -8,12 +8,22 @@ import SwiftUI
 struct TemplatesView: View {
     var onUseTemplate: (GameTemplate) -> Void
 
-    @State private var viewModel = TemplatesViewModel()
+    @State private var viewModel: TemplatesViewModel
+    private let skipsInitialLoad: Bool
+
+    private let labelColor = Color.appSecondaryText
+
+    init(onUseTemplate: @escaping (GameTemplate) -> Void, previewViewModel: TemplatesViewModel? = nil) {
+        self.onUseTemplate = onUseTemplate
+        _viewModel = State(initialValue: previewViewModel ?? TemplatesViewModel())
+        skipsInitialLoad = previewViewModel != nil
+    }
 
     var body: some View {
         Group {
             if viewModel.isLoading {
                 ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if viewModel.templates.isEmpty {
                 emptyState
             } else {
@@ -25,32 +35,43 @@ struct TemplatesView: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(template.name)
+                                        .font(.custom("DIN-Medium", size: 17))
                                         .foregroundStyle(Color.primary)
                                     Text("\(template.numCourts) courts · \(template.format.title)")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .font(.custom("DIN-Regular", size: 13))
+                                        .foregroundStyle(labelColor)
                                 }
                                 Spacer()
                                 Image(systemName: "chevron.right")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .font(.footnote)
+                                    .foregroundStyle(labelColor)
                             }
+                            .padding()
+                            .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
                         }
-                    }
-                    .onDelete { indexSet in
-                        Task {
-                            for index in indexSet {
-                                await viewModel.delete(viewModel.templates[index])
+                        .buttonStyle(.plain)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                Task { await viewModel.delete(template) }
+                            } label: {
+                                Label("Delete", systemImage: "trash")
                             }
                         }
                     }
                 }
+                .scrollContentBackground(.hidden)
             }
         }
         .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("Templates")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await viewModel.load() }
+        .task {
+            guard !skipsInitialLoad else { return }
+            await viewModel.load()
+        }
         .refreshable { await viewModel.load() }
     }
 
@@ -59,7 +80,7 @@ struct TemplatesView: View {
             Spacer()
 
             Image(systemName: "square.stack")
-                .font(.system(size: 140))
+                .font(.system(size: 100))
                 .foregroundStyle(Color.primary)
 
             Text("No templates yet")
@@ -78,8 +99,22 @@ struct TemplatesView: View {
     }
 }
 
-#Preview {
-    NavigationStack {
-        TemplatesView(onUseTemplate: { _ in })
+#Preview("With templates") {
+    let vm = TemplatesViewModel()
+    vm.isLoading = false
+    vm.templates = [
+        GameTemplate(id: UUID(), name: "Wednesday Sesh", numCourts: 4, isDoubles: true, requiresApproval: false, format: .kingOfTheCourt, formatSettings: [:]),
+        GameTemplate(id: UUID(), name: "Weekend Ladder", numCourts: 6, isDoubles: false, requiresApproval: true, format: .pegBoard, formatSettings: [:])
+    ]
+    return NavigationStack {
+        TemplatesView(onUseTemplate: { _ in }, previewViewModel: vm)
+    }
+}
+
+#Preview("Empty") {
+    let vm = TemplatesViewModel()
+    vm.isLoading = false
+    return NavigationStack {
+        TemplatesView(onUseTemplate: { _ in }, previewViewModel: vm)
     }
 }

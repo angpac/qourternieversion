@@ -24,14 +24,17 @@ struct RotationFormatSettingsView: View {
     /// something to show.
     @State private var createdGame: Game?
 
+    private let labelColor = Color.appSecondaryText
+    private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
+
     var body: some View {
         Form {
-            Section(viewModel.format.title) {
+            Section {
                 switch viewModel.format {
                 case .manual:
                     Text("No settings needed, you'll build every match yourself from the queue.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .font(.custom("DIN-Regular", size: 13))
+                        .foregroundStyle(labelColor)
 
                 case .kingOfTheCourt:
                     Stepper(
@@ -46,6 +49,7 @@ struct RotationFormatSettingsView: View {
                         step: 5
                     )
                     Toggle("Auto-rotate when timer ends", isOn: $viewModel.formatSettings.autoRotate)
+                        .tint(accentColor)
 
                 case .pegBoard:
                     Stepper(
@@ -82,25 +86,33 @@ struct RotationFormatSettingsView: View {
                         step: 1
                     )
                 }
+            } header: {
+                Text(viewModel.format.title)
+                    .font(.custom("DIN-Regular", size: 15))
+                    .foregroundStyle(labelColor)
             }
 
             if viewModel.format.isTournament {
                 Section {
                     Text("Once players have joined, set up the bracket from the Live Dashboard: seed players, then start matches court by court.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .font(.custom("DIN-Regular", size: 13))
+                        .foregroundStyle(labelColor)
                 }
             } else if viewModel.format != .manual {
                 Section {
                     Toggle("Manually match players", isOn: $viewModel.formatSettings.manualMatching)
+                        .tint(accentColor)
                 } footer: {
                     Text("You'll build each match yourself from the queue on the Live Dashboard, instead of the app pairing players automatically.")
+                        .font(.custom("DIN-Regular", size: 13))
+                        .foregroundStyle(labelColor)
                 }
             }
 
             if let errorMessage = viewModel.errorMessage {
                 Section {
                     Text(errorMessage)
+                        .font(.custom("DIN-Regular", size: 13))
                         .foregroundStyle(.red)
                 }
             }
@@ -127,11 +139,22 @@ struct RotationFormatSettingsView: View {
                 } label: {
                     if isCreating {
                         ProgressView()
+                            .tint(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
                     } else {
                         Text("Create game")
+                            .font(.custom("DIN-Medium", size: 16))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
                     }
                 }
+                .background(accentColor, in: Capsule())
+                .buttonStyle(.plain)
                 .disabled(isCreating)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
             }
         }
         .scrollContentBackground(.hidden)

@@ -16,48 +16,112 @@ struct SendAnnouncementSheet: View {
     @State private var isSending = false
     @State private var errorMessage: String?
 
+    private let labelColor = Color.appSecondaryText
+    private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
+
+    private var isMessageEmpty: Bool {
+        message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Send to") {
-                    Picker("Recipient", selection: $targetPlayer) {
-                        Text("Everyone").tag(nil as GamePlayer?)
-                        ForEach(roster) { player in
-                            Text(player.displayName).tag(player as GamePlayer?)
+            VStack(spacing: 0) {
+                ZStack {
+                    Text("Send announcement")
+                        .font(.custom("DIN-Medium", size: 17))
+                        .foregroundStyle(Color.primary)
+                        .frame(maxWidth: .infinity)
+
+                    HStack {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Text("Cancel")
+                                .font(.custom("DIN-Medium", size: 15))
+                                .foregroundStyle(Color.primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                        }
+                        .background(Color(.systemGray5), in: Capsule())
+                        .buttonStyle(.plain)
+
+                        Spacer()
+
+                        Button {
+                            Task { await send() }
+                        } label: {
+                            Group {
+                                if isSending {
+                                    ProgressView()
+                                        .tint(.white)
+                                } else {
+                                    Text("Send")
+                                        .font(.custom("DIN-Medium", size: 15))
+                                        .foregroundStyle(.white)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                        }
+                        .background(isMessageEmpty ? Color(.systemGray5) : accentColor, in: Capsule())
+                        .buttonStyle(.plain)
+                        .disabled(isMessageEmpty || isSending)
+                    }
+                }
+                .padding()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Send to")
+                                .font(.custom("DIN-Regular", size: 13))
+                                .foregroundStyle(labelColor)
+
+                            Menu {
+                                Button("Everyone") { targetPlayer = nil }
+                                ForEach(roster) { player in
+                                    Button(player.displayName) { targetPlayer = player }
+                                }
+                            } label: {
+                                HStack {
+                                    Text(targetPlayer?.displayName ?? "Everyone")
+                                        .font(.custom("DIN-Regular", size: 17))
+                                        .foregroundStyle(Color.primary)
+                                    Spacer()
+                                    Image(systemName: "chevron.up.chevron.down")
+                                        .font(.footnote)
+                                        .foregroundStyle(labelColor)
+                                }
+                                .padding()
+                                .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Message")
+                                .font(.custom("DIN-Regular", size: 13))
+                                .foregroundStyle(labelColor)
+
+                            TextField("What's up?", text: $message, axis: .vertical)
+                                .font(.custom("DIN-Regular", size: 17))
+                                .lineLimit(3...6)
+                                .padding()
+                                .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
+                        }
+
+                        if let errorMessage {
+                            Text(errorMessage)
+                                .font(.custom("DIN-Regular", size: 13))
+                                .foregroundStyle(.red)
                         }
                     }
-                }
-
-                Section("Message") {
-                    TextField("What's up?", text: $message, axis: .vertical)
-                        .lineLimit(3...6)
-                }
-
-                if let errorMessage {
-                    Section {
-                        Text(errorMessage).foregroundStyle(.red)
-                    }
+                    .padding()
                 }
             }
-            .navigationTitle("Send announcement")
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button {
-                        Task { await send() }
-                    } label: {
-                        if isSending {
-                            ProgressView()
-                        } else {
-                            Text("Send")
-                        }
-                    }
-                    .disabled(message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending)
-                }
-            }
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 

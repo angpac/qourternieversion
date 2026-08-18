@@ -21,6 +21,10 @@ struct CourtDetailSheet: View {
     @State private var playerToSubstitute: GamePlayer?
     @State private var incomingPlayer: GamePlayer?
 
+    private let labelColor = Color.appSecondaryText
+    private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
+    private let destructiveColor = Color(red: 0xFF / 255, green: 0x42 / 255, blue: 0x45 / 255)
+
     private var isConfirmingReportedScore: Bool {
         matchWithPlayers.match.status == .awaitingConfirmation
     }
@@ -47,105 +51,146 @@ struct CourtDetailSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                if hasNoPlayers {
-                    VStack(spacing: 12) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 32))
-                            .foregroundStyle(.red)
-                        Text("This court has no players")
-                            .font(.headline)
-                        Text("Clearing it reopens the court and takes you straight into building a match from the queue.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding()
+            VStack(spacing: 0) {
+                ZStack {
+                    Text(hasNoPlayers ? "Court error" : (isConfirmingReportedScore ? "Confirm score" : "Live score"))
+                        .font(.custom("DIN-Medium", size: 17))
+                        .foregroundStyle(Color.primary)
+                        .frame(maxWidth: .infinity)
 
-                    Spacer()
-
-                    Button {
-                        Task {
-                            isSaving = true
-                            let court = viewModel.courts.first { $0.id == matchWithPlayers.match.courtId }
-                            await viewModel.endMatch(matchWithPlayers, scoreA: 0, scoreB: 0)
-                            isSaving = false
+                    HStack {
+                        Button {
                             dismiss()
-                            if let court {
-                                onClearedForReassignment(court)
+                        } label: {
+                            Text("Close")
+                                .font(.custom("DIN-Medium", size: 15))
+                                .foregroundStyle(Color.primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                        }
+                        .background(Color(.systemGray5), in: Capsule())
+                        .buttonStyle(.plain)
+
+                        Spacer()
+                    }
+                }
+                .padding()
+
+                VStack(spacing: 24) {
+                    if hasNoPlayers {
+                        VStack(spacing: 12) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 32))
+                                .foregroundStyle(destructiveColor)
+                            Text("This court has no players")
+                                .font(.custom("DIN-Medium", size: 17))
+                                .foregroundStyle(Color.primary)
+                            Text("Clearing it reopens the court and takes you straight into building a match from the queue.")
+                                .font(.custom("DIN-Regular", size: 13))
+                                .foregroundStyle(labelColor)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding()
+
+                        Spacer()
+
+                        Button {
+                            Task {
+                                isSaving = true
+                                let court = viewModel.courts.first { $0.id == matchWithPlayers.match.courtId }
+                                await viewModel.endMatch(matchWithPlayers, scoreA: 0, scoreB: 0)
+                                isSaving = false
+                                dismiss()
+                                if let court {
+                                    onClearedForReassignment(court)
+                                }
+                            }
+                        } label: {
+                            if isSaving {
+                                ProgressView()
+                                    .tint(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                            } else {
+                                Text("Clear court & assign players")
+                                    .font(.custom("DIN-Medium", size: 16))
+                                    .foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
                             }
                         }
-                    } label: {
-                        if isSaving {
-                            ProgressView().frame(maxWidth: .infinity)
-                        } else {
-                            Text("Clear court & assign players")
-                                .frame(maxWidth: .infinity)
+                        .background(destructiveColor, in: Capsule())
+                        .buttonStyle(.plain)
+                        .disabled(isSaving)
+                    } else {
+                        if isConfirmingReportedScore {
+                            Label("Player-reported score, review and confirm", systemImage: "checkmark.shield")
+                                .font(.custom("DIN-Regular", size: 13))
+                                .foregroundStyle(.orange)
+                                .padding(.top, 8)
                         }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.red)
-                    .disabled(isSaving)
-                } else {
-                    if isConfirmingReportedScore {
-                        Label("Player-reported score, review and confirm", systemImage: "checkmark.shield")
-                            .font(.footnote)
-                            .foregroundStyle(.orange)
-                            .padding(.top, 8)
-                    }
 
-                    scoreboardRow(
-                        teamNames: matchWithPlayers.teamA.map(\.displayName).joined(separator: " & "),
-                        score: $scoreA
-                    )
+                        scoreboardRow(
+                            teamNames: matchWithPlayers.teamA.map(\.displayName).joined(separator: " & "),
+                            score: $scoreA
+                        )
 
-                    Text("vs")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        Text("vs")
+                            .font(.custom("DIN-Regular", size: 13))
+                            .foregroundStyle(labelColor)
 
-                    scoreboardRow(
-                        teamNames: matchWithPlayers.teamB.map(\.displayName).joined(separator: " & "),
-                        score: $scoreB
-                    )
+                        scoreboardRow(
+                            teamNames: matchWithPlayers.teamB.map(\.displayName).joined(separator: " & "),
+                            score: $scoreB
+                        )
 
-                    playersOnCourtSection
+                        playersOnCourtSection
 
-                    Spacer()
+                        Spacer()
 
-                    Button {
-                        Task {
-                            isSaving = true
-                            await viewModel.endMatch(matchWithPlayers, scoreA: scoreA, scoreB: scoreB)
-                            isSaving = false
-                            dismiss()
+                        Button {
+                            Task {
+                                isSaving = true
+                                await viewModel.endMatch(matchWithPlayers, scoreA: scoreA, scoreB: scoreB)
+                                isSaving = false
+                                dismiss()
+                            }
+                        } label: {
+                            if isSaving {
+                                ProgressView()
+                                    .tint(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                            } else {
+                                Text(isConfirmingReportedScore ? "Confirm" : "End match")
+                                    .font(.custom("DIN-Medium", size: 16))
+                                    .foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                            }
                         }
-                    } label: {
-                        if isSaving {
-                            ProgressView().frame(maxWidth: .infinity)
-                        } else {
-                            Text(isConfirmingReportedScore ? "Confirm" : "End match")
-                                .frame(maxWidth: .infinity)
-                        }
+                        .background(accentColor, in: Capsule())
+                        .buttonStyle(.plain)
+                        .disabled(isSaving)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(isSaving)
                 }
+                .padding()
             }
-            .padding()
-            .navigationTitle(hasNoPlayers ? "Court error" : (isConfirmingReportedScore ? "Confirm score" : "Live score"))
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
-                }
-            }
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $playerToSubstitute) { outgoing in
                 NavigationStack {
                     List(viewModel.queue) { candidate in
                         Button(candidate.displayName) {
                             incomingPlayer = candidate
                         }
+                        .font(.custom("DIN-Regular", size: 17))
+                        .foregroundStyle(Color.primary)
+                        .listRowBackground(Color.appSurface)
                     }
+                    .scrollContentBackground(.hidden)
+                    .background(Color.appBackground.ignoresSafeArea())
                     .navigationTitle("Sub in for \(outgoing.displayName)")
                     .navigationBarTitleDisplayMode(.inline)
                     .overlay {
@@ -191,29 +236,48 @@ struct CourtDetailSheet: View {
     private var playersOnCourtSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Players on court")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            ForEach(matchWithPlayers.teamA + matchWithPlayers.teamB) { player in
-                HStack {
-                    Text(player.displayName)
-                    Spacer()
-                    Button {
-                        playerToSubstitute = player
-                    } label: {
-                        Label("Sub", systemImage: "arrow.triangle.2.circlepath")
-                            .font(.caption)
+                .font(.custom("DIN-Regular", size: 13))
+                .foregroundStyle(labelColor)
+            VStack(spacing: 0) {
+                ForEach(matchWithPlayers.teamA + matchWithPlayers.teamB) { player in
+                    HStack {
+                        Text(player.displayName)
+                            .font(.custom("DIN-Regular", size: 17))
+                            .foregroundStyle(Color.primary)
+                        Spacer()
+                        Button {
+                            playerToSubstitute = player
+                        } label: {
+                            Label("Sub", systemImage: "arrow.triangle.2.circlepath")
+                                .font(.custom("DIN-Medium", size: 13))
+                                .foregroundStyle(accentColor)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .overlay(
+                                    Capsule().stroke(accentColor, lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.bordered)
+                    .padding()
+
+                    if player.id != (matchWithPlayers.teamA + matchWithPlayers.teamB).last?.id {
+                        Rectangle()
+                            .fill(labelColor.opacity(0.15))
+                            .frame(height: 1)
+                            .padding(.horizontal)
+                    }
                 }
             }
+            .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
         }
-        .padding(.horizontal, 4)
     }
 
     private func scoreboardRow(teamNames: String, score: Binding<Int>) -> some View {
         VStack(spacing: 8) {
             Text(teamNames)
-                .font(.headline)
+                .font(.custom("DIN-Medium", size: 17))
+                .foregroundStyle(Color.primary)
                 .multilineTextAlignment(.center)
 
             HStack(spacing: 24) {
@@ -228,6 +292,7 @@ struct CourtDetailSheet: View {
 
                 Text("\(score.wrappedValue)")
                     .font(.system(size: 56, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.primary)
                     .frame(minWidth: 90)
                     .contentTransition(.numericText())
                     .animation(.default, value: score.wrappedValue)
@@ -240,11 +305,11 @@ struct CourtDetailSheet: View {
                         .font(.system(size: 32))
                 }
             }
-            .foregroundStyle(.tint)
+            .foregroundStyle(accentColor)
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
     }
 
     private func pushScore() {

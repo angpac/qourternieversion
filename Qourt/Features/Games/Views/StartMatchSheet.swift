@@ -24,41 +24,52 @@ struct StartMatchSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                HStack {
-                    Button("Cancel") { dismiss() }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                ZStack {
+                    Text(isDoubles ? "Build teams" : "Pick players")
+                        .font(.custom("DIN-Medium", size: 17))
                         .foregroundStyle(Color.primary)
+                        .frame(maxWidth: .infinity)
+
+                    HStack {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Text("Cancel")
+                                .font(.custom("DIN-Medium", size: 15))
+                                .foregroundStyle(Color.primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                        }
                         .background(Color(.systemGray5), in: Capsule())
                         .buttonStyle(.plain)
 
-                    Spacer()
+                        Spacer()
 
-                    Text(isDoubles ? "Build teams" : "Pick players")
-                        .font(.headline)
-
-                    Spacer()
-
-                    Button {
-                        Task {
-                            isStarting = true
-                            await viewModel.startMatch(court: court, teamA: teamA, teamB: teamB)
-                            isStarting = false
-                            dismiss()
+                        Button {
+                            Task {
+                                isStarting = true
+                                await viewModel.startMatch(court: court, teamA: teamA, teamB: teamB)
+                                isStarting = false
+                                dismiss()
+                            }
+                        } label: {
+                            Group {
+                                if isStarting {
+                                    ProgressView()
+                                        .tint(canStart ? .white : Color.primary)
+                                } else {
+                                    Text("Assign")
+                                        .font(.custom("DIN-Medium", size: 15))
+                                        .foregroundStyle(canStart ? Color.white : Color.primary)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
                         }
-                    } label: {
-                        if isStarting {
-                            ProgressView()
-                        } else {
-                            Text("Assign")
-                        }
+                        .background(canStart ? accentColor : Color(.systemGray5), in: Capsule())
+                        .buttonStyle(.plain)
+                        .disabled(!canStart || isStarting)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .foregroundStyle(canStart ? Color.white : Color.primary)
-                    .background(canStart ? accentColor : Color(.systemGray5), in: Capsule())
-                    .buttonStyle(.plain)
-                    .disabled(!canStart || isStarting)
                 }
                 .padding()
 
@@ -74,7 +85,7 @@ struct StartMatchSheet: View {
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Queue")
-                                .font(.subheadline)
+                                .font(.custom("DIN-Regular", size: 15))
                                 .foregroundStyle(labelColor)
 
                             VStack(spacing: 0) {
@@ -84,11 +95,12 @@ struct StartMatchSheet: View {
                                     } label: {
                                         HStack {
                                             Text(player.displayName)
+                                                .font(.custom("DIN-Regular", size: 17))
                                                 .foregroundStyle(Color.primary)
                                             Spacer()
                                             Text(player.skillLevel)
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
+                                                .font(.custom("DIN-Regular", size: 13))
+                                                .foregroundStyle(labelColor)
                                         }
                                         .padding()
                                     }
@@ -130,13 +142,14 @@ struct StartMatchSheet: View {
     private func teamSection(title: String, players: [GamePlayer], remove: @escaping (GamePlayer) -> Void) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.subheadline)
+                .font(.custom("DIN-Regular", size: 15))
                 .foregroundStyle(labelColor)
 
             VStack(alignment: .leading, spacing: 0) {
                 if players.isEmpty {
                     Text("No players yet")
-                        .font(.headline)
+                        .font(.custom("DIN-Medium", size: 17))
+                        .foregroundStyle(Color.primary)
                         .padding(.horizontal)
                         .padding(.top, 12)
 
@@ -147,7 +160,7 @@ struct StartMatchSheet: View {
                         .padding(.top, 8)
 
                     Text("Tap a player below to add")
-                        .font(.subheadline)
+                        .font(.custom("DIN-Regular", size: 15))
                         .foregroundStyle(labelColor)
                         .padding(.horizontal)
                         .padding(.vertical, 12)
@@ -158,10 +171,11 @@ struct StartMatchSheet: View {
                         } label: {
                             HStack {
                                 Text(player.displayName)
+                                    .font(.custom("DIN-Regular", size: 17))
                                     .foregroundStyle(Color.primary)
                                 Spacer()
                                 Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(labelColor)
                             }
                             .padding()
                         }

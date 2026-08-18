@@ -24,6 +24,10 @@ struct LiveDashboardView: View {
     /// inside a modal.
     private var onExitToGamesList: (() -> Void)?
 
+    private let labelColor = Color.appSecondaryText
+    private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
+    private let destructiveColor = Color(red: 0xFF / 255, green: 0x42 / 255, blue: 0x45 / 255)
+
     init(game: Game, onExitToGamesList: (() -> Void)? = nil) {
         _viewModel = State(initialValue: LiveDashboardViewModel(game: game))
         self.onExitToGamesList = onExitToGamesList
@@ -37,8 +41,7 @@ struct LiveDashboardView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         Text(viewModel.game.name)
-                            .font(.custom("DIN-Regular", size: 34))
-                            .fontWeight(.bold)
+                            .font(.custom("DIN-BlackAlternate", size: 34))
 
                         if !viewModel.isConnected {
                             reconnectingBanner
@@ -47,16 +50,16 @@ struct LiveDashboardView: View {
                         if viewModel.hasEnded {
                             VStack(alignment: .leading, spacing: 8) {
                                 Label("This game has ended. Its join code, link, and QR no longer work.", systemImage: "checkmark.seal")
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
+                                    .font(.custom("DIN-Regular", size: 13))
+                                    .foregroundStyle(Color.appSecondaryText)
                                 NavigationLink("View game summary") {
                                     GameSummaryView(game: viewModel.game)
                                 }
-                                .font(.footnote.bold())
+                                .font(.custom("DIN-Medium", size: 13))
                             }
                             .padding(12)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                            .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 12))
                         } else if viewModel.isPaused {
                             pausedBanner
                         }
@@ -243,7 +246,7 @@ struct LiveDashboardView: View {
 
     private var reconnectingBanner: some View {
         Label("Reconnecting, you may be seeing slightly stale data", systemImage: "wifi.slash")
-            .font(.footnote.bold())
+            .font(.custom("DIN-Medium", size: 13))
             .foregroundStyle(.orange)
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -253,10 +256,10 @@ struct LiveDashboardView: View {
     private var pausedBanner: some View {
         VStack(alignment: .leading, spacing: 4) {
             Label("Game paused", systemImage: "pause.circle.fill")
-                .font(.footnote.bold())
+                .font(.custom("DIN-Medium", size: 13))
             Text("Rotation and round timers are frozen. Matches already on court can still be scored and ended as usual.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.custom("DIN-Regular", size: 12))
+                .foregroundStyle(.orange.opacity(0.8))
         }
         .foregroundStyle(.orange)
         .padding(12)
@@ -268,7 +271,8 @@ struct LiveDashboardView: View {
         VStack(spacing: 8) {
             if let prepEndsAt = viewModel.prepEndsAt {
                 Text("Get to your court!")
-                    .font(.headline)
+                    .font(.custom("DIN-Medium", size: 17))
+                    .foregroundStyle(Color.primary)
                 if prepEndsAt > Date() {
                     Text(timerInterval: Date.now...prepEndsAt, countsDown: true)
                         .font(.system(size: 56, weight: .bold, design: .rounded))
@@ -280,42 +284,59 @@ struct LiveDashboardView: View {
                         .foregroundStyle(.orange)
                 }
                 Text("Round starts the moment this hits zero")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.custom("DIN-Regular", size: 13))
+                    .foregroundStyle(labelColor)
             } else if let roundEndsAt = viewModel.roundEndsAt {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     let remaining = max(0, roundEndsAt.timeIntervalSince(context.date))
                     Text(formatCountdown(remaining))
                         .font(.system(size: 40, weight: .bold, design: .rounded))
                         .monospacedDigit()
+                        .foregroundStyle(Color.primary)
                 }
                 Text(viewModel.game.autoRotate ? "Rotates automatically when it hits zero" : "Tap End Round when it hits zero")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Button(role: .destructive) {
+                    .font(.custom("DIN-Regular", size: 13))
+                    .foregroundStyle(labelColor)
+                Button {
                     Task { await viewModel.rotateKingOfTheCourt() }
                 } label: {
                     if viewModel.isRotating {
                         ProgressView()
+                            .tint(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
                     } else {
                         Text("End round now")
+                            .font(.custom("DIN-Medium", size: 15))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
                     }
                 }
-                .buttonStyle(.bordered)
+                .background(destructiveColor, in: Capsule())
+                .buttonStyle(.plain)
                 .disabled(viewModel.isRotating || viewModel.isPaused)
             } else {
                 Text("No round running")
-                    .foregroundStyle(.secondary)
-                Button("Start round") {
+                    .font(.custom("DIN-Regular", size: 15))
+                    .foregroundStyle(labelColor)
+                Button {
                     Task { await viewModel.startPrepPhase() }
+                } label: {
+                    Text("Start round")
+                        .font(.custom("DIN-Medium", size: 15))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
                 }
-                .buttonStyle(.borderedProminent)
+                .background(accentColor, in: Capsule())
+                .buttonStyle(.plain)
                 .disabled(viewModel.isPaused)
             }
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
+        .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
     }
 
     private func formatCountdown(_ seconds: TimeInterval) -> String {
@@ -327,27 +348,40 @@ struct LiveDashboardView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Courts")
-                    .font(.headline)
-                    .foregroundStyle(Color.appSecondaryText)
+                    .font(.custom("DIN-Medium", size: 17))
+                    .foregroundStyle(labelColor)
                 Spacer()
                 if viewModel.canAutoAssign {
                     Button {
                         Task { await viewModel.autoAssignOpenCourts() }
                     } label: {
                         Label("Auto-assign by skill", systemImage: "wand.and.stars")
-                            .font(.caption.bold())
+                            .font(.custom("DIN-Medium", size: 12))
+                            .foregroundStyle(accentColor)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .overlay(Capsule().stroke(accentColor, lineWidth: 1))
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.plain)
                 }
             }
 
             if viewModel.courts.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("No courts yet.")
-                        .foregroundStyle(.secondary)
-                    Button("Create \(viewModel.game.numCourts) courts") {
+                        .font(.custom("DIN-Regular", size: 15))
+                        .foregroundStyle(labelColor)
+                    Button {
                         Task { await viewModel.createMissingCourts() }
+                    } label: {
+                        Text("Create \(viewModel.game.numCourts) courts")
+                            .font(.custom("DIN-Medium", size: 15))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
                     }
+                    .background(accentColor, in: Capsule())
+                    .buttonStyle(.plain)
                 }
             } else {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 12)], spacing: 12) {
@@ -367,24 +401,25 @@ struct LiveDashboardView: View {
     private var queueSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(viewModel.queue.isEmpty ? "Queue (0)" : "Queue ( \(viewModel.queue.count) waiting )")
-                .font(.headline)
-                .foregroundStyle(Color.appSecondaryText)
+                .font(.custom("DIN-Medium", size: 17))
+                .foregroundStyle(labelColor)
 
             if viewModel.queue.isEmpty {
                 Text("No players waiting.")
-                    .foregroundStyle(Color.appSecondaryText)
+                    .font(.custom("DIN-Regular", size: 15))
+                    .foregroundStyle(labelColor)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 16) {
                         ForEach(Array(viewModel.queue.enumerated()), id: \.element.id) { index, player in
                             VStack(spacing: 6) {
                                 Text("\(index + 1)")
-                                    .font(.headline.bold())
+                                    .font(.custom("DIN-Medium", size: 17))
                                     .foregroundStyle(Color.appOnInverseSurface)
                                     .frame(width: 44, height: 44)
                                     .background(Color.appInverseSurface, in: Circle())
                                 Text(player.displayName)
-                                    .font(.caption2)
+                                    .font(.custom("DIN-Regular", size: 11))
                                     .lineLimit(1)
                                     .frame(width: 60)
                             }
@@ -397,7 +432,7 @@ struct LiveDashboardView: View {
                     Task { await viewModel.announceNextUp() }
                 } label: {
                     Label("Announce next up", systemImage: "speaker.wave.2.fill")
-                        .font(.headline)
+                        .font(.custom("DIN-Medium", size: 16))
                         .foregroundStyle(Color.appOnInverseSurface)
                         .frame(maxWidth: .infinity)
                         .padding()
@@ -417,6 +452,7 @@ private struct CourtCard: View {
 
     private let labelColor = Color.appSecondaryText
     private let goldColor = Color(red: 0xB8 / 255, green: 0x8A / 255, blue: 0x2B / 255)
+    private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
 
     var body: some View {
         Button {
@@ -425,11 +461,12 @@ private struct CourtCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text(court.name)
-                        .font(.subheadline.bold())
+                        .font(.custom("DIN-Medium", size: 15))
+                        .foregroundStyle(Color.primary)
                     if let override = court.singlesOverride {
                         Text(override ? "Singles" : "Doubles")
-                            .font(.caption2.bold())
-                            .foregroundStyle(.secondary)
+                            .font(.custom("DIN-Medium", size: 11))
+                            .foregroundStyle(labelColor)
                     }
                     Spacer()
                     if court.isChallengeCourt {
@@ -444,36 +481,38 @@ private struct CourtCard: View {
 
                 if court.isChallengeCourt {
                     Text("KING'S COURT")
-                        .font(.caption2.bold())
+                        .font(.custom("DIN-Medium", size: 11))
                         .foregroundStyle(goldColor)
                 }
 
                 if let match {
                     if match.teamA.isEmpty && match.teamB.isEmpty {
                         Text("No players, tap to fix")
-                            .font(.caption)
+                            .font(.custom("DIN-Regular", size: 13))
                             .foregroundStyle(.red)
                     } else if court.isChallengeCourt && court.winStreak > 0 {
                         Text("DEFENDING")
-                            .font(.caption2.bold())
+                            .font(.custom("DIN-Medium", size: 11))
                             .foregroundStyle(labelColor)
                         Text(match.teamA.map(\.displayName).joined(separator: " • "))
-                            .font(.caption)
+                            .font(.custom("DIN-Regular", size: 13))
+                            .foregroundStyle(Color.primary)
                             .lineLimit(1)
                         Text("\(court.winStreak) straight win\(court.winStreak == 1 ? "" : "s")")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .font(.custom("DIN-Regular", size: 11))
+                            .foregroundStyle(labelColor)
                     } else {
                         // One line, "Name & Name vs Name & Name" — easier to
                         // scan at a glance than three stacked lines.
                         Text("\(match.teamA.map(\.displayName).joined(separator: " & ")) vs \(match.teamB.map(\.displayName).joined(separator: " & "))")
-                            .font(.caption)
+                            .font(.custom("DIN-Regular", size: 13))
+                            .foregroundStyle(Color.primary)
                             .lineLimit(2)
                     }
 
                     if match.match.status == .awaitingConfirmation {
                         Text("Needs confirmation")
-                            .font(.caption2.bold())
+                            .font(.custom("DIN-Medium", size: 11))
                             .foregroundStyle(.orange)
                     } else {
                         elapsedTimer(since: match.match.startedAt)
@@ -484,8 +523,8 @@ private struct CourtCard: View {
                         Image(systemName: "plus.circle.fill")
                         Text("Tap to assign players")
                     }
-                    .font(.caption.bold())
-                    .foregroundStyle(labelColor)
+                    .font(.custom("DIN-Medium", size: 13))
+                    .foregroundStyle(accentColor)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -508,11 +547,11 @@ private struct CourtCard: View {
             HStack(spacing: 4) {
                 Image(systemName: "clock")
                 Text(String(format: "%d:%02d", elapsed / 60, elapsed % 60))
-                    .fontWeight(.bold)
+                    .font(.custom("DIN-Medium", size: 11))
                 Text("elapsed")
+                    .font(.custom("DIN-Regular", size: 11))
             }
-            .font(.caption2)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(labelColor)
         }
     }
 }
