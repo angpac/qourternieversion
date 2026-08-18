@@ -126,7 +126,8 @@ struct ClubsListView: View {
                 .foregroundStyle(Color.primary)
 
             Text("No clubs yet")
-                .font(.custom("DIN-BlackAlternate", size: 36))
+                .font(.custom("DIN-Regular", size: 36))
+                .fontWeight(.bold)
 
             Text("Create a club to link multiple games under one admin roster.")
                 .font(.custom("DIN-Regular", size: 18))
