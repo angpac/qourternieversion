@@ -237,6 +237,11 @@ async function handleQueueAdvanced(gameId: string) {
   // A draft or finished game has no meaningful "next up".
   if (game.status !== "live") return;
 
+  // The queue really did just shift, independent of whether anyone still
+  // needs a fresh "you're up next" ping below — so every queued player's
+  // Live Activity gets its position refreshed unconditionally.
+  await pushQueuePositionsToLiveActivities(gameId);
+
   const matchSize = game.is_doubles ? 4 : 2;
 
   const { data: queued } = await supabase
@@ -275,6 +280,38 @@ async function handleQueueAdvanced(gameId: string) {
         "You're up next",
         `Get ready — you're in the next match at ${game.name}.`
       )
+    )
+  );
+}
+
+/// Keeps every queued player's Lock Screen / Dynamic Island Live Activity
+/// showing their real position, even while the app is backgrounded — without
+/// this, the "#N in line" badge only refreshes the next time they foreground
+/// the app. Distinct from the "you're up next" notification above: this
+/// covers the WHOLE queue, not just the next matchSize players, and fires
+/// on every queue shift rather than once per stint in the queue.
+async function pushQueuePositionsToLiveActivities(gameId: string) {
+  const { data: queued } = await supabase
+    .from("game_players")
+    .select("id")
+    .eq("game_id", gameId)
+    .eq("status", "queued")
+    .order("queue_position", { ascending: true, nullsFirst: false })
+    .order("joined_at", { ascending: true });
+
+  if (!queued || queued.length === 0) return;
+
+  await Promise.all(
+    queued.map((player, index) =>
+      sendLiveActivityUpdate(player.id, {
+        status: "queued",
+        queuePosition: index + 1,
+        courtName: null,
+        teammateNames: null,
+        opponentNames: null,
+        scoreA: null,
+        scoreB: null,
+      })
     )
   );
 }

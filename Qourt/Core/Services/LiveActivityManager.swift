@@ -18,7 +18,15 @@ enum LiveActivityManager {
     private static var currentActivity: Activity<PlayerActivityAttributes>?
 
     static func start(gameName: String, state: PlayerActivityAttributes.ContentState, gamePlayerID: UUID) {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            // The most common reason a Live Activity "never shows up": the
+            // user (or a fresh simulator) has Live Activities turned off for
+            // this app, or globally, in system Settings. Logged rather than
+            // silently returning so this is diagnosable from the console
+            // instead of looking like the feature is just broken.
+            print("[LiveActivityManager] Not starting — Live Activities are disabled in system settings.")
+            return
+        }
 
         if currentActivity != nil {
             Task { await update(state) }
@@ -34,7 +42,10 @@ enum LiveActivityManager {
             currentActivity = activity
             Task { await observePushToken(activity, gamePlayerID: gamePlayerID) }
         } catch {
-            // Live Activities are a nice-to-have — never block the rest of the app on this.
+            // Live Activities are a nice-to-have — never block the rest of
+            // the app on this — but the failure reason still needs to be
+            // visible somewhere, or "it just doesn't show up" is undebuggable.
+            print("[LiveActivityManager] Activity.request failed: \(error)")
         }
     }
 
