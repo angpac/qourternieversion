@@ -26,7 +26,9 @@ struct PlayerLiveStatusView: View {
     var body: some View {
         ScrollView {
             if viewModel.isLoading {
-                ProgressView().padding(.top, 60)
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 60)
             } else if let player = viewModel.myPlayer {
                 VStack(spacing: 20) {
                     // Shown so an admin can glance at a player's own phone
@@ -76,10 +78,12 @@ struct PlayerLiveStatusView: View {
                     rosterLink
                 }
                 .padding()
+                .frame(maxWidth: .infinity)
             } else {
                 Text("Couldn't find your spot in this game.")
                     .font(.custom("DIN-Regular", size: 15))
                     .foregroundStyle(labelColor)
+                    .frame(maxWidth: .infinity)
                     .padding(.top, 60)
             }
         }

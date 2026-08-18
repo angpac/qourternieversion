@@ -15,45 +15,56 @@ struct TournamentMatchDetailSheet: View {
 
     private var match: MatchWithPlayers? { viewModel.activeMatches[tournamentMatch.id] }
 
+    private let labelColor = Color.appSecondaryText
+    private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
-                VStack(spacing: 4) {
-                    Text(viewModel.name(for: tournamentMatch.teamAPlayerIds))
-                        .font(.headline)
-                    Text("vs")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(viewModel.name(for: tournamentMatch.teamBPlayerIds))
-                        .font(.headline)
-                }
+                scoreboardRow(
+                    teamName: viewModel.name(for: tournamentMatch.teamAPlayerIds),
+                    score: $scoreA
+                )
 
-                HStack(spacing: 40) {
-                    Stepper(value: $scoreA, in: 0...99) {
-                        Text("\(scoreA)").font(.system(.largeTitle, design: .rounded, weight: .bold))
-                    }
-                    Stepper(value: $scoreB, in: 0...99) {
-                        Text("\(scoreB)").font(.system(.largeTitle, design: .rounded, weight: .bold))
-                    }
-                }
+                Text("vs")
+                    .font(.custom("DIN-Regular", size: 13))
+                    .foregroundStyle(labelColor)
 
-                Button("End match") {
+                scoreboardRow(
+                    teamName: viewModel.name(for: tournamentMatch.teamBPlayerIds),
+                    score: $scoreB
+                )
+
+                Button {
                     Task {
                         await viewModel.endMatch(tournamentMatch, scoreA: scoreA, scoreB: scoreB)
                         dismiss()
                     }
+                } label: {
+                    Text("End match")
+                        .font(.custom("DIN-Medium", size: 16))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
                 }
-                .buttonStyle(.borderedProminent)
+                .background(scoreA == scoreB ? Color(.systemGray5) : accentColor, in: Capsule())
+                .buttonStyle(.plain)
                 .disabled(scoreA == scoreB)
 
                 Spacer()
             }
             .padding()
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("Match")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("Close")
+                            .font(.custom("DIN-Regular", size: 17))
+                    }
                 }
             }
             .onAppear {
@@ -71,6 +82,43 @@ struct TournamentMatchDetailSheet: View {
                 }
             }
         }
+    }
+
+    private func scoreboardRow(teamName: String, score: Binding<Int>) -> some View {
+        VStack(spacing: 8) {
+            Text(teamName)
+                .font(.custom("DIN-Medium", size: 17))
+                .foregroundStyle(Color.primary)
+                .multilineTextAlignment(.center)
+
+            HStack(spacing: 24) {
+                Button {
+                    guard score.wrappedValue > 0 else { return }
+                    score.wrappedValue -= 1
+                } label: {
+                    Image(systemName: "minus.circle.fill")
+                        .font(.system(size: 32))
+                }
+
+                Text("\(score.wrappedValue)")
+                    .font(.custom("DIN-Regular", size: 48))
+                    .foregroundStyle(Color.primary)
+                    .frame(minWidth: 70)
+                    .contentTransition(.numericText())
+                    .animation(.default, value: score.wrappedValue)
+
+                Button {
+                    score.wrappedValue += 1
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 32))
+                }
+            }
+            .foregroundStyle(accentColor)
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
     }
 }
 

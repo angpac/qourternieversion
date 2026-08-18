@@ -11,6 +11,9 @@ struct BracketView: View {
     @State private var matchToScore: TournamentMatch?
     @State private var isShowingSetup = false
 
+    private let labelColor = Color.appSecondaryText
+    private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
+
     init(game: Game) {
         _viewModel = State(initialValue: BracketViewModel(game: game))
     }
@@ -21,16 +24,16 @@ struct BracketView: View {
                 if viewModel.gameStatus == "ended" {
                     VStack(alignment: .leading, spacing: 8) {
                         Label("This game has ended.", systemImage: "checkmark.seal")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .font(.custom("DIN-Regular", size: 13))
+                            .foregroundStyle(labelColor)
                         NavigationLink("View game summary") {
                             GameSummaryView(game: viewModel.game)
                         }
-                        .font(.footnote.bold())
+                        .font(.custom("DIN-Medium", size: 13))
                     }
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 12))
                 }
 
                 if viewModel.isLoading {
@@ -53,6 +56,7 @@ struct BracketView: View {
             }
             .padding()
         }
+        .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("Bracket")
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.start() }
@@ -67,12 +71,24 @@ struct BracketView: View {
                             matchToStart = nil
                         }
                     }
+                    .font(.custom("DIN-Regular", size: 17))
+                    .foregroundStyle(Color.primary)
+                    .listRowBackground(Color.appSurface)
                 }
+                .scrollContentBackground(.hidden)
+                .background(Color.appBackground.ignoresSafeArea())
                 .navigationTitle("Choose a court")
                 .navigationBarTitleDisplayMode(.inline)
                 .overlay {
                     if viewModel.openCourts.isEmpty {
-                        ContentUnavailableView("No open courts", systemImage: "sportscourt")
+                        VStack(spacing: 16) {
+                            Image(systemName: "sportscourt")
+                                .font(.system(size: 60))
+                                .foregroundStyle(Color.primary)
+                            Text("No open courts")
+                                .font(.custom("DIN-Medium", size: 20))
+                                .foregroundStyle(Color.primary)
+                        }
                     }
                 }
                 .toolbar {
@@ -114,15 +130,25 @@ struct BracketView: View {
         VStack(spacing: 16) {
             Image(systemName: "trophy")
                 .font(.system(size: 40))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(labelColor)
             Text("Bracket not set up yet")
-                .font(.title3.bold())
+                .font(.custom("DIN-Medium", size: 20))
+                .foregroundStyle(Color.primary)
             Text("Once everyone's joined, seed players and generate the bracket.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(.custom("DIN-Regular", size: 15))
+                .foregroundStyle(labelColor)
                 .multilineTextAlignment(.center)
-            Button("Set up tournament") { isShowingSetup = true }
-                .buttonStyle(.borderedProminent)
+            Button {
+                isShowingSetup = true
+            } label: {
+                Text("Set up tournament")
+                    .font(.custom("DIN-Medium", size: 15))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+            }
+            .background(accentColor, in: Capsule())
+            .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 40)
@@ -131,8 +157,12 @@ struct BracketView: View {
     private func championBanner(_ name: String) -> some View {
         VStack(spacing: 8) {
             Image(systemName: "trophy.fill").font(.system(size: 32)).foregroundStyle(.yellow)
-            Text("Champion").font(.caption).foregroundStyle(.secondary)
-            Text(name).font(.title2.bold())
+            Text("Champion")
+                .font(.custom("DIN-Regular", size: 13))
+                .foregroundStyle(labelColor)
+            Text(name)
+                .font(.custom("DIN-Medium", size: 20))
+                .foregroundStyle(Color.primary)
         }
         .frame(maxWidth: .infinity)
         .padding(24)
@@ -141,7 +171,9 @@ struct BracketView: View {
 
     private var readySection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Ready to play").font(.headline)
+            Text("Ready to play")
+                .font(.custom("DIN-Medium", size: 17))
+                .foregroundStyle(labelColor)
             ForEach(viewModel.readyMatches) { tm in
                 Button {
                     matchToStart = tm
@@ -149,17 +181,19 @@ struct BracketView: View {
                     HStack {
                         VStack(alignment: .leading) {
                             Text("\(viewModel.name(for: tm.teamAPlayerIds)) vs \(viewModel.name(for: tm.teamBPlayerIds))")
+                                .font(.custom("DIN-Regular", size: 15))
+                                .foregroundStyle(Color.primary)
                             Text(roundLabel(bracket: tm.bracket, round: tm.round))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(.custom("DIN-Regular", size: 13))
+                                .foregroundStyle(labelColor)
                         }
                         Spacer()
-                        Image(systemName: "play.circle.fill").foregroundStyle(.tint)
+                        Image(systemName: "play.circle.fill").foregroundStyle(accentColor)
                     }
                 }
                 .buttonStyle(.plain)
                 .padding(10)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
+                .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 10))
             }
         }
     }
@@ -170,7 +204,9 @@ struct BracketView: View {
             .sorted { $0.slot < $1.slot }
 
         return VStack(alignment: .leading, spacing: 8) {
-            Text(roundLabel(bracket: bracket, round: round)).font(.headline)
+            Text(roundLabel(bracket: bracket, round: round))
+                .font(.custom("DIN-Medium", size: 17))
+                .foregroundStyle(labelColor)
             ForEach(matches) { tm in
                 matchRow(tm)
             }
@@ -186,23 +222,31 @@ struct BracketView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(viewModel.name(for: tm.teamAPlayerIds))
-                        .fontWeight(isWinner(tm, team: "a") ? .bold : .regular)
+                        .font(.custom(isWinner(tm, team: "a") ? "DIN-Medium" : "DIN-Regular", size: 15))
+                        .foregroundStyle(Color.primary)
                     Text(viewModel.name(for: tm.teamBPlayerIds))
-                        .fontWeight(isWinner(tm, team: "b") ? .bold : .regular)
+                        .font(.custom(isWinner(tm, team: "b") ? "DIN-Medium" : "DIN-Regular", size: 15))
+                        .foregroundStyle(Color.primary)
                 }
                 Spacer()
                 if let match = mwp?.match, let a = match.scoreA, let b = match.scoreB {
-                    Text("\(a) – \(b)").font(.subheadline.monospacedDigit())
+                    Text("\(a) – \(b)")
+                        .font(.custom("DIN-Medium", size: 15))
+                        .foregroundStyle(Color.primary)
                 } else if tm.isReadyToStart {
-                    Text("Ready").font(.caption).foregroundStyle(.secondary)
+                    Text("Ready")
+                        .font(.custom("DIN-Regular", size: 13))
+                        .foregroundStyle(labelColor)
                 } else {
-                    Text("TBD").font(.caption).foregroundStyle(.secondary)
+                    Text("TBD")
+                        .font(.custom("DIN-Regular", size: 13))
+                        .foregroundStyle(labelColor)
                 }
             }
         }
         .buttonStyle(.plain)
         .padding(10)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+        .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 10))
         .disabled(mwp == nil)
     }
 
