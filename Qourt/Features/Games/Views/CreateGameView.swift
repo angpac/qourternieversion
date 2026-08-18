@@ -11,40 +11,12 @@ struct CreateGameView: View {
     var onFinished: () -> Void
 
     @Environment(\.dismiss) private var dismiss
-    @State private var locationSearch = LocationSearchViewModel()
-    @State private var suppressLocationQuery = false
 
     var body: some View {
         Form {
             Section("Game details") {
                 TextField("Name", text: $viewModel.name)
                 TextField("Location", text: $viewModel.location)
-                    .onChange(of: viewModel.location) { _, newValue in
-                        if suppressLocationQuery {
-                            suppressLocationQuery = false
-                            return
-                        }
-                        locationSearch.updateQuery(newValue)
-                    }
-                if !locationSearch.suggestions.isEmpty {
-                    ForEach(Array(locationSearch.suggestions.enumerated()), id: \.offset) { _, suggestion in
-                        Button {
-                            suppressLocationQuery = true
-                            viewModel.location = suggestion.subtitle.isEmpty ? suggestion.title : "\(suggestion.title), \(suggestion.subtitle)"
-                            locationSearch.clearSuggestions()
-                        } label: {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(suggestion.title).foregroundStyle(Color.primary)
-                                if !suggestion.subtitle.isEmpty {
-                                    Text(suggestion.subtitle)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
                 DatePicker("Date & time", selection: $viewModel.startsAt)
             }
 
@@ -163,7 +135,6 @@ struct CreateGameView: View {
             }
         }
         .task {
-            locationSearch.requestLocation()
             if let userID = auth.userID {
                 await viewModel.loadAvailableClubs(ownerID: userID)
             }
