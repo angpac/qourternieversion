@@ -36,7 +36,8 @@ struct SettingsView: View {
                     Spacer()
 
                     Text("Settings")
-                        .font(.headline)
+                        .font(.custom("DIN-Medium", size: 17))
+                        .foregroundStyle(Color.primary)
 
                     Spacer()
 
@@ -51,6 +52,7 @@ struct SettingsView: View {
                             ProgressView()
                         } else {
                             Text("Save")
+                                .font(.custom("DIN-Medium", size: 15))
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
@@ -77,6 +79,7 @@ struct SettingsView: View {
                                 .foregroundStyle(Color.appSecondaryText)
 
                             TextField("Name", text: $name)
+                                .font(.custom("DIN-Regular", size: 17))
                                 .textInputAutocapitalization(.words)
                                 .padding()
                                 .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
@@ -84,6 +87,8 @@ struct SettingsView: View {
 
                         HStack {
                             Text("Skill level")
+                                .font(.custom("DIN-Regular", size: 17))
+                                .foregroundStyle(Color.primary)
                             Spacer()
                             Picker("Skill level", selection: $skillLevel) {
                                 ForEach(skillLevels, id: \.self) { Text($0) }
@@ -105,6 +110,7 @@ struct SettingsView: View {
                                 ClubsListView(auth: auth)
                             } label: {
                                 Label("Manage Clubs", systemImage: "person.3.sequence")
+                                    .font(.custom("DIN-Regular", size: 17))
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .foregroundStyle(Color.appSecondaryText)
                             }
@@ -120,6 +126,7 @@ struct SettingsView: View {
                                 auth.role == .admin ? "Switch to Player" : "Switch to Admin",
                                 systemImage: "arrow.left.arrow.right"
                             )
+                            .font(.custom("DIN-Regular", size: 17))
                             .foregroundStyle(Color.appSecondaryText)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -130,7 +137,7 @@ struct SettingsView: View {
                             Task { await auth.signOut() }
                         } label: {
                             Text("Sign out")
-                                .font(.headline)
+                                .font(.custom("DIN-Medium", size: 16))
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding()

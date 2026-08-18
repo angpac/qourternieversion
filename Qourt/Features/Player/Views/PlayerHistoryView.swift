@@ -22,6 +22,10 @@ struct PlayerHistoryView: View {
     @State private var allTimeWins = 0
     @State private var isLoading = true
 
+    private let labelColor = Color.appSecondaryText
+    private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
+    private let destructiveColor = Color(red: 0xFF / 255, green: 0x42 / 255, blue: 0x45 / 255)
+
     private var winRate: Double {
         allTimeGamesPlayed == 0 ? 0 : Double(allTimeWins) / Double(allTimeGamesPlayed)
     }
@@ -30,35 +34,70 @@ struct PlayerHistoryView: View {
         Group {
             if isLoading {
                 ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List {
-                    Section("All-time") {
-                        LabeledContent("Games played", value: "\(allTimeGamesPlayed)")
-                        LabeledContent("Wins", value: "\(allTimeWins)")
-                        LabeledContent("Win rate", value: allTimeGamesPlayed == 0 ? "None yet" : "\(Int(winRate * 100))%")
+                    Section {
+                        LabeledContent {
+                            Text("\(allTimeGamesPlayed)")
+                                .font(.custom("DIN-Regular", size: 17))
+                                .foregroundStyle(Color.primary)
+                        } label: {
+                            Text("Games played")
+                                .font(.custom("DIN-Regular", size: 17))
+                                .foregroundStyle(Color.primary)
+                        }
+                        LabeledContent {
+                            Text("\(allTimeWins)")
+                                .font(.custom("DIN-Regular", size: 17))
+                                .foregroundStyle(Color.primary)
+                        } label: {
+                            Text("Wins")
+                                .font(.custom("DIN-Regular", size: 17))
+                                .foregroundStyle(Color.primary)
+                        }
+                        LabeledContent {
+                            Text(allTimeGamesPlayed == 0 ? "None yet" : "\(Int(winRate * 100))%")
+                                .font(.custom("DIN-Regular", size: 17))
+                                .foregroundStyle(Color.primary)
+                        } label: {
+                            Text("Win rate")
+                                .font(.custom("DIN-Regular", size: 17))
+                                .foregroundStyle(Color.primary)
+                        }
+                    } header: {
+                        Text("All-time")
+                            .font(.custom("DIN-Regular", size: 13))
+                            .foregroundStyle(labelColor)
                     }
 
-                    Section("This game") {
+                    Section {
                         if thisGameMatches.isEmpty {
                             Text("No completed matches yet.")
-                                .foregroundStyle(.secondary)
+                                .font(.custom("DIN-Regular", size: 17))
+                                .foregroundStyle(labelColor)
                         } else {
                             ForEach(thisGameMatches) { match in
                                 HStack {
                                     VStack(alignment: .leading) {
                                         Text(match.won ? "Won" : "Lost")
-                                            .font(.subheadline.bold())
-                                            .foregroundStyle(match.won ? .green : .red)
+                                            .font(.custom("DIN-Medium", size: 15))
+                                            .foregroundStyle(match.won ? accentColor : destructiveColor)
                                         Text("vs \(match.opponents)")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
+                                            .font(.custom("DIN-Regular", size: 13))
+                                            .foregroundStyle(labelColor)
                                     }
                                     Spacer()
                                     Text("\(match.scoreA) – \(match.scoreB)")
-                                        .font(.subheadline.monospacedDigit())
+                                        .font(.custom("DIN-Medium", size: 15))
+                                        .foregroundStyle(Color.primary)
                                 }
                             }
                         }
+                    } header: {
+                        Text("This game")
+                            .font(.custom("DIN-Regular", size: 13))
+                            .foregroundStyle(labelColor)
                     }
                 }
                 .scrollContentBackground(.hidden)

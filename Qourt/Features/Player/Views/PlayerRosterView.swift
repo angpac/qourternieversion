@@ -12,32 +12,39 @@ struct PlayerRosterView: View {
     @State private var players: [GamePlayer] = []
     @State private var isLoading = true
 
+    private let labelColor = Color.appSecondaryText
+    private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
+
     var body: some View {
         Group {
             if isLoading {
                 ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if players.isEmpty {
-                ContentUnavailableView("No players yet", systemImage: "person.3")
+                emptyState
             } else {
                 List(players) { player in
                     HStack {
-                        VStack(alignment: .leading) {
+                        VStack(alignment: .leading, spacing: 2) {
                             Text(player.displayName)
+                                .font(.custom("DIN-Regular", size: 17))
+                                .foregroundStyle(Color.primary)
                             if player.status == .onCourt {
                                 Text("On court")
-                                    .font(.caption)
-                                    .foregroundStyle(.green)
+                                    .font(.custom("DIN-Regular", size: 13))
+                                    .foregroundStyle(accentColor)
                             } else if player.status == .resting {
                                 Text("Resting")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .font(.custom("DIN-Regular", size: 13))
+                                    .foregroundStyle(labelColor)
                             }
                         }
                         Spacer()
                         Text(player.skillLevel)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.custom("DIN-Regular", size: 13))
+                            .foregroundStyle(labelColor)
                     }
+                    .listRowBackground(Color.appSurface)
                 }
                 .scrollContentBackground(.hidden)
             }
@@ -47,6 +54,23 @@ struct PlayerRosterView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .refreshable { await load() }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 16) {
+            Spacer()
+
+            Image(systemName: "person.3")
+                .font(.system(size: 80))
+                .foregroundStyle(Color.primary)
+
+            Text("No players yet")
+                .font(.custom("DIN-Regular", size: 28))
+                .fontWeight(.bold)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func load() async {

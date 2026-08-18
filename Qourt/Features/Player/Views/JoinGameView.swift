@@ -22,22 +22,24 @@ struct JoinGameView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Join code") {
+                Section {
                     if isEditingCode {
                         TextField("6-character code", text: $viewModel.joinCode)
+                            .font(.custom("DIN-Regular", size: 17))
                             .textInputAutocapitalization(.characters)
                             .autocorrectionDisabled()
                         Button {
                             isShowingScanner = true
                         } label: {
                             Label("Scan QR code", systemImage: "qrcode.viewfinder")
+                                .font(.custom("DIN-Medium", size: 15))
                                 .foregroundStyle(Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255))
                         }
                     } else if let previewError = viewModel.previewError {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(previewError)
-                                    .font(.subheadline)
+                                    .font(.custom("DIN-Medium", size: 15))
                                     .foregroundStyle(.red)
                                 Text(viewModel.joinCode)
                                     .font(.system(.caption, design: .monospaced))
@@ -47,17 +49,17 @@ struct JoinGameView: View {
                             Button("Try another code") {
                                 isEditingCode = true
                             }
-                            .font(.footnote)
+                            .font(.custom("DIN-Medium", size: 13))
                         }
                     } else {
                         HStack {
                             Label {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("Joining")
-                                        .font(.caption)
+                                        .font(.custom("DIN-Regular", size: 13))
                                         .foregroundStyle(.secondary)
                                     Text(viewModel.isLoadingPreview ? "…" : (viewModel.previewGameName ?? "game"))
-                                        .font(.title3.bold())
+                                        .font(.custom("DIN-Medium", size: 20))
                                     Text(viewModel.joinCode)
                                         .font(.system(.caption, design: .monospaced))
                                         .foregroundStyle(.secondary)
@@ -70,24 +72,34 @@ struct JoinGameView: View {
                             Button("Not this game?") {
                                 isEditingCode = true
                             }
-                            .font(.footnote)
+                            .font(.custom("DIN-Medium", size: 13))
                         }
                     }
+                } header: {
+                    Text("Join code")
+                        .font(.custom("DIN-Regular", size: 13))
                 }
 
-                Section("Your info") {
+                Section {
                     TextField("Name", text: $viewModel.displayName)
+                        .font(.custom("DIN-Regular", size: 17))
                     HStack {
                         Text("Skill level")
+                            .font(.custom("DIN-Regular", size: 17))
                         Spacer()
                         Text(viewModel.skillLevel)
+                            .font(.custom("DIN-Regular", size: 17))
                             .foregroundStyle(.secondary)
                     }
+                } header: {
+                    Text("Your info")
+                        .font(.custom("DIN-Regular", size: 13))
                 }
 
                 if let errorMessage = viewModel.errorMessage {
                     Section {
                         Text(errorMessage)
+                            .font(.custom("DIN-Regular", size: 13))
                             .foregroundStyle(.red)
                     }
                 }
@@ -109,6 +121,7 @@ struct JoinGameView: View {
                                 .frame(maxWidth: .infinity)
                         } else {
                             Text("Join")
+                                .font(.custom("DIN-Medium", size: 16))
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity, alignment: .center)
                         }

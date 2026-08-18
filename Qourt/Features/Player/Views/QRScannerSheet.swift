@@ -12,6 +12,9 @@ struct QRScannerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var authorizationStatus = AVCaptureDevice.authorizationStatus(for: .video)
 
+    private let labelColor = Color.appSecondaryText
+    private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
+
     var body: some View {
         NavigationStack {
             Group {
@@ -26,14 +29,14 @@ struct QRScannerSheet: View {
                         .ignoresSafeArea()
 
                         RoundedRectangle(cornerRadius: 16)
-                            .stroke(.white, lineWidth: 3)
+                            .stroke(accentColor, lineWidth: 3)
                             .frame(width: 220, height: 220)
                             .shadow(radius: 4)
 
                         VStack {
                             Spacer()
                             Text("Point your camera at the game's QR code")
-                                .font(.footnote.bold())
+                                .font(.custom("DIN-Medium", size: 13))
                                 .foregroundStyle(.white)
                                 .padding(10)
                                 .background(.black.opacity(0.6), in: Capsule())
@@ -41,13 +44,12 @@ struct QRScannerSheet: View {
                         }
                     }
                 case .notDetermined:
-                    ProgressView().task { await requestAccess() }
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.appBackground.ignoresSafeArea())
+                        .task { await requestAccess() }
                 default:
-                    ContentUnavailableView(
-                        "Camera access needed",
-                        systemImage: "camera.fill",
-                        description: Text("Enable camera access for Qourt in Settings to scan a QR code, or enter the join code by hand instead.")
-                    )
+                    cameraAccessNeeded
                 }
             }
             .navigationTitle("Scan QR code")
@@ -58,6 +60,29 @@ struct QRScannerSheet: View {
                 }
             }
         }
+    }
+
+    private var cameraAccessNeeded: some View {
+        VStack(spacing: 16) {
+            Spacer()
+
+            Image(systemName: "camera.fill")
+                .font(.system(size: 80))
+                .foregroundStyle(Color.primary)
+
+            Text("Camera access needed")
+                .font(.custom("DIN-BlackAlternate", size: 28))
+
+            Text("Enable camera access for Qourt in Settings to scan a QR code, or enter the join code by hand instead.")
+                .font(.custom("DIN-Regular", size: 15))
+                .foregroundStyle(labelColor)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.appBackground.ignoresSafeArea())
     }
 
     private func requestAccess() async {

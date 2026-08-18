@@ -15,6 +15,9 @@ struct PickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selected: [GamePlayer] = []
 
+    private let labelColor = Color.appSecondaryText
+    private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
+
     private var teammatesNeeded: Int { viewModel.pickerTeammatesNeeded }
     private var isSingles: Bool { teammatesNeeded == 1 }
 
@@ -25,50 +28,64 @@ struct PickerSheet: View {
                     Text(isSingles
                          ? "You're the Picker! Choose your opponent for a singles match."
                          : "You're the Picker! Choose \(teammatesNeeded) players to build your doubles match.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(.custom("DIN-Regular", size: 15))
+                        .foregroundStyle(labelColor)
                 }
 
-                Section("Your match") {
+                Section {
                     if selected.isEmpty {
                         Text("No teammates picked yet")
-                            .foregroundStyle(.secondary)
+                            .font(.custom("DIN-Regular", size: 17))
+                            .foregroundStyle(labelColor)
                     } else {
                         ForEach(selected) { player in
                             Button {
                                 selected.removeAll { $0.id == player.id }
                             } label: {
                                 HStack {
-                                    Text(player.displayName).foregroundStyle(Color.primary)
+                                    Text(player.displayName)
+                                        .font(.custom("DIN-Regular", size: 17))
+                                        .foregroundStyle(Color.primary)
                                     Spacer()
-                                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(labelColor)
                                 }
                             }
                         }
                     }
+                } header: {
+                    Text("Your match")
+                        .font(.custom("DIN-Regular", size: 13))
                 }
 
-                Section("Next in line") {
+                Section {
                     ForEach(viewModel.pickerPool) { player in
                         Button {
                             toggle(player)
                         } label: {
                             HStack {
-                                Text(player.displayName).foregroundStyle(Color.primary)
+                                Text(player.displayName)
+                                    .font(.custom("DIN-Regular", size: 17))
+                                    .foregroundStyle(Color.primary)
                                 Spacer()
                                 Text(player.skillLevel)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .font(.custom("DIN-Regular", size: 13))
+                                    .foregroundStyle(labelColor)
                                 if selected.contains(where: { $0.id == player.id }) {
                                     Image(systemName: "checkmark.circle.fill")
-                                        .foregroundStyle(.tint)
+                                        .foregroundStyle(accentColor)
                                 }
                             }
                         }
                         .disabled(selected.count == teammatesNeeded && !selected.contains(where: { $0.id == player.id }))
                     }
+                } header: {
+                    Text("Next in line")
+                        .font(.custom("DIN-Regular", size: 13))
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("You're the Picker")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -86,15 +103,17 @@ struct PickerSheet: View {
                             ProgressView()
                         } else {
                             Text("Start match")
+                                .font(.custom("DIN-Medium", size: 15))
                         }
                     }
+                    .tint(accentColor)
                     .disabled(selected.count != teammatesNeeded || viewModel.isStartingPickerMatch)
                 }
             }
             .overlay(alignment: .bottom) {
                 if let errorMessage = viewModel.errorMessage {
                     Text(errorMessage)
-                        .font(.footnote)
+                        .font(.custom("DIN-Regular", size: 13))
                         .foregroundStyle(.white)
                         .padding(10)
                         .frame(maxWidth: .infinity)
