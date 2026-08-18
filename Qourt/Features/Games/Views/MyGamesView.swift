@@ -133,9 +133,9 @@ struct MyGamesView: View {
             Button {
                 isShowingSettings = true
             } label: {
-                Image(systemName: "person.crop.circle")
+                Image(systemName: "person.crop.circle.fill")
                     .symbolRenderingMode(.monochrome)
-                    .font(.system(size: 18))
+                    .font(.system(size: 22))
                     .foregroundStyle(Color.primary)
                     .frame(width: 40, height: 40)
                     //.background(Color(.blue))
