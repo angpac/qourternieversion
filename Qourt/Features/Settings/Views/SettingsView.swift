@@ -25,7 +25,9 @@ struct SettingsView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(.black)
+                            // systemGray5 darkens in dark mode, so a fixed
+                            // black glyph would disappear into it.
+                            .foregroundStyle(Color.primary)
                             .frame(width: 32, height: 32)
                             .background(Color(.systemGray5), in: Circle())
                     }
@@ -72,12 +74,12 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Name")
                                 .font(.custom("DIN-Regular", size: 14))
-                                .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
+                                .foregroundStyle(Color.appSecondaryText)
 
                             TextField("Name", text: $name)
                                 .textInputAutocapitalization(.words)
                                 .padding()
-                                .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                                .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
                         }
 
                         HStack {
@@ -93,7 +95,7 @@ struct SettingsView: View {
                             .background(Color(.systemGray5), in: Capsule())
                         }
                         .padding()
-                        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                        .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
                         .onChange(of: skillLevel) { _, newValue in
                             Task { await auth.setDefaultSkillLevel(newValue) }
                         }
@@ -104,10 +106,10 @@ struct SettingsView: View {
                             } label: {
                                 Label("Manage Clubs", systemImage: "person.3.sequence")
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                    .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
+                                    .foregroundStyle(Color.appSecondaryText)
                             }
                             .padding()
-                            .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                            .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
                         }
 
                         Button {
@@ -118,11 +120,11 @@ struct SettingsView: View {
                                 auth.role == .admin ? "Switch to Player" : "Switch to Admin",
                                 systemImage: "arrow.left.arrow.right"
                             )
-                            .foregroundStyle(Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255))
+                            .foregroundStyle(Color.appSecondaryText)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .padding()
-                        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                        .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
 
                         Button(role: .destructive) {
                             Task { await auth.signOut() }

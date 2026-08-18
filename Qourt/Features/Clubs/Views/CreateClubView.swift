@@ -15,7 +15,7 @@ struct CreateClubView: View {
     @State private var isCreating = false
     @Environment(\.dismiss) private var dismiss
 
-    private let labelColor = Color(red: 0x4D / 255, green: 0x3E / 255, blue: 0x00 / 255)
+    private let labelColor = Color.appSecondaryText
     private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
 
     private var isNameEmpty: Bool { name.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -36,7 +36,7 @@ struct CreateClubView: View {
 
                             TextField("Club Name", text: $name)
                                 .padding()
-                                .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                                .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
@@ -46,7 +46,7 @@ struct CreateClubView: View {
 
                             HStack {
                                 Text("\(courts) Court\(courts <= 1 ? "" : "s")")
-                                    .foregroundStyle(.primary)
+                                    .foregroundStyle(Color.primary)
 
                                 Spacer()
 
@@ -55,11 +55,11 @@ struct CreateClubView: View {
                                         courts -= 1
                                     } label: {
                                         Image(systemName: "minus")
-                                            .foregroundStyle(.black)
+                                            .foregroundStyle(Color.primary)
                                             .frame(width: 28, height: 28)
                                             .overlay(
                                                 RoundedRectangle(cornerRadius: 6)
-                                                    .stroke(Color.black, lineWidth: 1)
+                                                    .stroke(Color.primary, lineWidth: 1)
                                             )
                                     }
                                     .disabled(courts == 0)
@@ -83,7 +83,7 @@ struct CreateClubView: View {
                                 .buttonStyle(.plain)
                             }
                             .padding()
-                            .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                            .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
                         }
 
                         if let errorMessage = viewModel.errorMessage {

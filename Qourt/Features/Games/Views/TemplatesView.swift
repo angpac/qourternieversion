@@ -25,7 +25,7 @@ struct TemplatesView: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(template.name)
-                                        .foregroundStyle(.primary)
+                                        .foregroundStyle(Color.primary)
                                     Text("\(template.numCourts) courts · \(template.format.title)")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
@@ -60,7 +60,7 @@ struct TemplatesView: View {
 
             Image(systemName: "square.stack")
                 .font(.system(size: 140))
-                .foregroundStyle(Color(.black))
+                .foregroundStyle(Color.primary)
 
             Text("No templates yet")
                 .font(.custom("DIN-Regular", size: 36))

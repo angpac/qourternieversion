@@ -103,7 +103,7 @@ struct ManageCourtsView: View {
     @ViewBuilder
     private func courtRow(_ court: Court) -> some View {
         HStack {
-            Text(court.name).foregroundStyle(.primary)
+            Text(court.name).foregroundStyle(Color.primary)
             if court.isChallengeCourt {
                 Image(systemName: "flame.fill").foregroundStyle(.orange).font(.caption)
             }

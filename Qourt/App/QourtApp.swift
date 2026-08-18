@@ -25,6 +25,10 @@ struct QourtApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                // Light-only for now. The palette in AppBackground.swift is
+                // already light/dark adaptive, so removing this one line is
+                // all that's needed to turn dark mode on later.
+                .preferredColorScheme(.light)
                 .environment(deepLinkRouter)
                 .onOpenURL { url in
                     deepLinkRouter.handle(url)
