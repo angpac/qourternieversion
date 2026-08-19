@@ -17,8 +17,7 @@ struct SettingsView: View {
     private let labelColor = Color(red: 0x5F / 255, green: 0x4C / 255, blue: 0x00 / 255)
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
+        VStack(spacing: 0) {
                 HStack {
                     Button {
                         dismiss()
@@ -147,16 +146,17 @@ struct SettingsView: View {
                     .padding()
                 }
             }
-            .background(Color.appBackground.ignoresSafeArea())
-            .toolbar(.hidden, for: .navigationBar)
-            .onAppear {
-                name = auth.displayName ?? ""
-                skillLevel = auth.defaultSkillLevel
-            }
+        .background(Color.appBackground.ignoresSafeArea())
+        .toolbar(.hidden, for: .navigationBar)
+        .onAppear {
+            name = auth.displayName ?? ""
+            skillLevel = auth.defaultSkillLevel
         }
     }
 }
 
 #Preview {
-    SettingsView(auth: AuthViewModel())
+    NavigationStack {
+        SettingsView(auth: AuthViewModel())
+    }
 }
