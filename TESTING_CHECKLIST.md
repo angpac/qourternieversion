@@ -286,6 +286,13 @@ cases work; everything else can be tested from the QourtClip scheme today.
 - [ ] **Routing:** iPhone *without* Qourt scans the QR → App Clip card appears
 - [ ] **Routing:** Android scans the same QR → web guest client, unchanged
 - [ ] Clip's uncompressed size stays under 15 MB (Xcode → Organizer → App Thinning report)
+- [ ] Backgrounding the clip stops the 2s polling; foregrounding resumes it
+- [ ] Kill wifi mid-session → "Reconnecting…" banner appears over the last known state, then clears on reconnect
+- [ ] "Get the full app" card presents the App Store overlay; it also appears once by itself ~3s after landing
+- [ ] Scan a *different* game's QR while already joined → switches to the new game, doesn't show the old one
+- [ ] Scan the *same* game's QR again → returns to your existing spot, doesn't join twice
+- [ ] VoiceOver: score reads "Score 21 to 19"; emoji aren't announced as stray words
+- [ ] Local Experience (Settings → Developer → App Clips Testing) with prefix `https://qourt-web.vercel.app/join` launches the clip for a brand-new game's QR
 
 ## Cross-cutting
 - [ ] Same game, one browser tab as "player" + iPhone as "admin" simultaneously — confirms realtime end-to-end

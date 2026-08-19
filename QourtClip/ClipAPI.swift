@@ -23,7 +23,27 @@ enum ClipAPI {
     struct APIError: LocalizedError {
         let message: String
         var errorDescription: String? { message }
+
+        /// The guest's session token no longer resolves - the game was
+        /// deleted, or the row was cleaned up. Distinct from a network
+        /// blip, because the only recovery is to join again rather than
+        /// retry. Matches the `raise ... using errcode = 'P0002'` in
+        /// `guest_status` and friends.
+        var isSessionGone: Bool {
+            message.localizedCaseInsensitiveContains("session not found")
+        }
     }
+
+    /// The polling loop runs every 2 seconds, so a request left on the
+    /// default 60-second timeout would stall updates for half a minute on
+    /// a flaky gym wifi. Fifteen seconds is well past a normal round trip
+    /// and still recovers quickly.
+    private static let session: URLSession = {
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = 15
+        configuration.waitsForConnectivity = false
+        return URLSession(configuration: configuration)
+    }()
 
     private struct PostgresError: Decodable {
         let message: String?
@@ -77,7 +97,15 @@ enum ClipAPI {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch let error as URLError {
+            throw APIError(message: error.code == .notConnectedToInternet
+                           ? "No internet connection."
+                           : "Couldn't reach Qourt. Check your connection.")
+        }
         guard let http = response as? HTTPURLResponse else {
             throw APIError(message: "No response from the server.")
         }

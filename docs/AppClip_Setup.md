@@ -86,6 +86,54 @@ NEXT_PUBLIC_APP_STORE_ID=<numeric id>
 The banner is deliberately omitted while that variable is unset — a
 placeholder ID would point people at somebody else's app listing.
 
+## Three ways to test, and which to use when
+
+These are genuinely different mechanisms, and the confusing part is that
+only the last one needs App Store Connect at all.
+
+| Goal | Use |
+|---|---|
+| Iterate while building | Xcode `_XCAppClipURL` |
+| Scan real QR codes, any game | **Local Experience on the device** |
+| Hand it to non-developer testers | TestFlight App Clip Invocation |
+| Public scans it from the Camera app | Advanced App Clip Experience (step 3) |
+
+### Local Experience - the realistic test, no Apple setup
+
+This is the one that lets you scan a QR for a game you just created. On the
+device: **Settings -> Developer -> App Clips Testing -> Local Experience**
+
+- URL prefix: `https://qourt-web.vercel.app/join`
+- Bundle ID: `net.criers.Qourt.Clip`
+- Plus a title, subtitle and action for the card
+
+It matches on a URL *prefix*, so every join code works - make a new game,
+show its QR, scan it with the Camera app, and the clip launches with that
+code. No per-game setup.
+
+Needs Developer Mode enabled on the device, and the clip installed by
+running the QourtClip scheme onto it from Xcode first.
+
+### TestFlight App Clip Invocation
+
+TestFlight -> the app -> App Clip Invocations -> **+**. Title and URL only;
+no header image, subtitle or action, and no Advanced Experience required.
+Testers pick the invocation from a list inside TestFlight rather than
+scanning.
+
+The URL is fixed per invocation, so point it at a game that will stay
+alive - e.g. `https://qourt-web.vercel.app/join/DPGMJM` (the "Appclip"
+game). Two things to know:
+
+- Invocations can be added or edited **without uploading a new build**, so
+  pointing at a different game is a one-minute change, and several can
+  exist at once for testers to choose between.
+- Every tester who opens it joins that game's roster for real, under
+  whatever name they type. Keep it on a throwaway game, not a live session.
+
+If the game is ever ended, the invocation starts failing with "This game
+has ended" - `guest_join_game` rejects `ended`, though `draft` is fine.
+
 ## Testing before any of that is done
 
 The clip can be run locally without any App Store Connect setup. The
@@ -104,6 +152,29 @@ without a code).
 On a real device, App Clip experiences can also be tested through
 TestFlight → the app → App Clip → Local Experiences, which lets you map a
 URL without submitting anything for review.
+
+## Production hardening already in place
+
+- **Upgrade path.** The status screen presents Apple's `SKOverlay`
+  App Clip configuration once, three seconds after the guest can actually
+  see their place in line, and again on demand from the "Get the full app"
+  card. Deliberately not on arrival - that would ask for a commitment
+  before delivering anything.
+- **Polling follows the scene.** The 2-second poll stops on background and
+  resumes on foreground, rather than running behind the lock screen.
+- **Requests time out in 15 seconds**, not the default 60, so one stalled
+  request on gym wifi can't freeze the queue position for half a minute.
+- **Stale data is labelled.** A failed poll keeps the last known state on
+  screen under a "Reconnecting…" banner instead of blanking or silently
+  lying.
+- **A dead session recovers.** If the token stops resolving, the clip
+  returns to the join form rather than polling a doomed request forever.
+- **Scanning a second game works.** The clip remembers which code its
+  session belongs to; a different code drops the old session, the same code
+  returns the guest to their existing spot instead of joining them twice.
+- **VoiceOver.** Decorative emoji are hidden from the accessibility tree,
+  the score reads as "Score 21 to 19", and the live/reported dot is hidden
+  because the wording beside it already carries that meaning.
 
 ## Notes on what the clip deliberately does not do
 

@@ -52,7 +52,21 @@ final class ClipViewModel {
         }
     }
     private static let tokenKey = "qourt_session_token"
+    private static let codeKey = "qourt_session_code"
     private var pollTask: Task<Void, Never>?
+
+    /// The join code the stored session belongs to. Without this, a guest
+    /// who scans a *different* game's QR while still holding a session
+    /// would silently be shown their old game.
+    private var joinedCode: String? {
+        didSet {
+            guard let joinedCode else {
+                UserDefaults.standard.removeObject(forKey: Self.codeKey)
+                return
+            }
+            UserDefaults.standard.set(joinedCode, forKey: Self.codeKey)
+        }
+    }
 
     init() {
         // An App Clip can be invoked more than once before the system
@@ -61,6 +75,7 @@ final class ClipViewModel {
         if let stored = UserDefaults.standard.string(forKey: Self.tokenKey),
            let token = UUID(uuidString: stored) {
             sessionToken = token
+            joinedCode = UserDefaults.standard.string(forKey: Self.codeKey)
             phase = .joined
         }
     }
@@ -77,9 +92,15 @@ final class ClipViewModel {
         let code = components[joinIndex + 1].uppercased()
         guard !code.isEmpty else { return }
 
-        // Don't yank someone out of a game they're already in just because
-        // the clip was reopened from the same card.
-        guard phase == .joining else { return }
+        if phase == .joined {
+            // Reopened from the same game's card - leave them where they
+            // are rather than making them join twice.
+            guard code != joinedCode else { return }
+            // A genuinely different game was scanned. The old session is
+            // no longer what they asked for, so drop it and start again.
+            startOver()
+        }
+
         joinCode = code
         isEditingCode = false
         Task { await loadPreview() }
@@ -134,6 +155,7 @@ final class ClipViewModel {
                 as: ClipJoinResult.self
             )
             sessionToken = result.session_token
+            joinedCode = code
             phase = .joined
         } catch {
             joinError = error.localizedDescription
@@ -167,6 +189,13 @@ final class ClipViewModel {
             )
             statusError = nil
         } catch {
+            // A token that no longer resolves can't be retried out of -
+            // polling would just fail forever behind stale data. Send them
+            // back to the join form instead.
+            if let apiError = error as? ClipAPI.APIError, apiError.isSessionGone {
+                startOver()
+                return
+            }
             statusError = error.localizedDescription
             return
         }
@@ -221,6 +250,7 @@ final class ClipViewModel {
     func startOver() {
         stopPolling()
         sessionToken = nil
+        joinedCode = nil
         status = nil
         announcements = []
         statusError = nil

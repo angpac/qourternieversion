@@ -12,9 +12,11 @@
 //
 
 import SwiftUI
+import StoreKit
 
 struct ClipStatusView: View {
     @Bindable var viewModel: ClipViewModel
+    @Environment(\.scenePhase) private var scenePhase
     @State private var isConfirmingLeave = false
     @State private var isReportingScore = false
     @State private var scoreA = 0
@@ -22,6 +24,12 @@ struct ClipStatusView: View {
     @State private var isPicking = false
     @State private var pickedIDs: [UUID] = []
     @State private var pickerError: String?
+    /// Apple's own "install the full app" overlay. Shown once, a beat after
+    /// the guest has actually landed somewhere useful - offering it before
+    /// they can see their place in line would be asking for a commitment
+    /// before delivering anything.
+    @State private var isShowingAppStoreOverlay = false
+    @State private var hasOfferedUpgrade = false
 
     var body: some View {
         ZStack {
@@ -39,8 +47,24 @@ struct ClipStatusView: View {
         .task {
             await viewModel.refresh()
             viewModel.startPolling()
+            await offerUpgradeOnce()
         }
         .onDisappear { viewModel.stopPolling() }
+        // Polling every 2 seconds behind the lock screen would burn battery
+        // and data for nothing, so it follows the scene.
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .active:
+                viewModel.startPolling()
+            case .background, .inactive:
+                viewModel.stopPolling()
+            @unknown default:
+                viewModel.stopPolling()
+            }
+        }
+        .appStoreOverlay(isPresented: $isShowingAppStoreOverlay) {
+            SKOverlay.AppClipConfiguration(position: .bottom)
+        }
         .confirmationDialog(
             "Leave this game?",
             isPresented: $isConfirmingLeave,
@@ -86,6 +110,10 @@ struct ClipStatusView: View {
         ScrollView {
             VStack(spacing: 24) {
                 header(status)
+
+                if viewModel.statusError != nil {
+                    reconnectingBanner
+                }
 
                 if let latest = viewModel.announcements.first {
                     announcementBanner(latest)
@@ -149,7 +177,9 @@ struct ClipStatusView: View {
             )
         case .queued:
             VStack(spacing: 8) {
-                Text("⏳").font(.system(size: 44))
+                Text("⏳")
+                    .font(.system(size: 44))
+                    .accessibilityHidden(true)
                 Text("You're #\(status.queue_position ?? 0) in line")
                     .font(.title2.bold())
                     .foregroundStyle(ClipTheme.zinc900)
@@ -203,6 +233,7 @@ struct ClipStatusView: View {
                     .fill(status.match_status == .awaitingConfirmation
                           ? ClipTheme.amber500 : Color.green)
                     .frame(width: 10, height: 10)
+                    .accessibilityHidden(true)
                 Text(status.court_name ?? "On court")
                     .font(.title2.bold())
                     .foregroundStyle(ClipTheme.zinc900)
@@ -229,6 +260,7 @@ struct ClipStatusView: View {
                     .monospacedDigit()
                     .foregroundStyle(ClipTheme.zinc900)
                     .contentTransition(.numericText())
+                    .accessibilityLabel("Score \(a) to \(b)")
             }
 
             if status.match_status == .awaitingConfirmation {
@@ -257,7 +289,7 @@ struct ClipStatusView: View {
 
     private var pickerPrompt: some View {
         VStack(spacing: 8) {
-            Text("⭐").font(.system(size: 28))
+            Text("⭐").font(.system(size: 28)).accessibilityHidden(true)
             Text("You're the Picker!")
                 .font(.headline)
                 .foregroundStyle(ClipTheme.zinc900)
@@ -308,7 +340,7 @@ struct ClipStatusView: View {
 
     private func announcementBanner(_ announcement: ClipAnnouncement) -> some View {
         HStack(alignment: .top, spacing: 8) {
-            Text("📣")
+            Text("📣").accessibilityHidden(true)
             Text(announcement.message)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(ClipTheme.zinc800)
@@ -319,6 +351,8 @@ struct ClipStatusView: View {
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.white, in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Announcement: \(announcement.message)")
     }
 
     private func lastResultBanner(_ status: ClipStatus, won: Bool) -> some View {
@@ -326,6 +360,7 @@ struct ClipStatusView: View {
             Text(won ? "🏆 You won your last match" : "You lost your last match")
                 .font(.headline)
                 .foregroundStyle(ClipTheme.zinc800)
+                .accessibilityLabel(won ? "You won your last match" : "You lost your last match")
             Spacer(minLength: 8)
             Text("\(status.last_match_score_a ?? 0) – \(status.last_match_score_b ?? 0)")
                 .font(.system(.body, design: .monospaced))
@@ -340,19 +375,52 @@ struct ClipStatusView: View {
     /// out of the clip and into the real app, which is where notifications
     /// and a persistent identity live.
     private var installPrompt: some View {
-        VStack(spacing: 4) {
-            Text("Get the full app")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white)
-            Text("Keep your profile between games and get notified when you're up.")
-                .font(.caption)
-                .foregroundStyle(ClipTheme.emerald100)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
+        Button {
+            isShowingAppStoreOverlay = true
+        } label: {
+            VStack(spacing: 4) {
+                Text("Get the full app")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                Text("Keep your profile between games and get notified when you're up.")
+                    .font(.caption)
+                    .foregroundStyle(ClipTheme.emerald100)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity)
+            .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
         }
-        .padding(16)
-        .frame(maxWidth: .infinity)
-        .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+        .buttonStyle(.plain)
+        .accessibilityHint("Shows the App Store card for the full Qourt app")
+    }
+
+    /// The last known state is still on screen and still broadly true, so
+    /// it stays put - this just stops it being read as live.
+    private var reconnectingBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "wifi.exclamationmark")
+            Text("Reconnecting…")
+                .font(.subheadline.weight(.medium))
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(ClipTheme.zinc800)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(ClipTheme.amber100, in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityLabel("Reconnecting. The information below may be out of date.")
+    }
+
+    /// Held back until there's a real status on screen, and never shown
+    /// while a sheet is up - the overlay would fight it for the bottom of
+    /// the screen.
+    private func offerUpgradeOnce() async {
+        guard !hasOfferedUpgrade, viewModel.status != nil else { return }
+        hasOfferedUpgrade = true
+        try? await Task.sleep(for: .seconds(3))
+        guard !isReportingScore, !isPicking, !isConfirmingLeave else { return }
+        isShowingAppStoreOverlay = true
     }
 
     private func errorState(_ message: String) -> some View {
@@ -372,7 +440,7 @@ struct ClipStatusView: View {
 
     private func centeredCard(emoji: String, title: String, subtitle: String) -> some View {
         VStack(spacing: 8) {
-            Text(emoji).font(.system(size: 44))
+            Text(emoji).font(.system(size: 44)).accessibilityHidden(true)
             Text(title)
                 .font(.title3.bold())
                 .foregroundStyle(ClipTheme.zinc900)
