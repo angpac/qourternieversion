@@ -4,18 +4,19 @@
 <dict>
 	<key>NSAppClip</key>
 	<dict>
+		<!-- The clip never asks for a location, and its notification story
+		     is "install the full app", so both confirmations stay off. -->
 		<key>NSAppClipRequestEphemeralUserNotification</key>
 		<false/>
 		<key>NSAppClipRequestLocationConfirmation</key>
 		<false/>
 	</dict>
-	<key>UIAppFonts</key>
-	<array>
-		<string>DIN-BlackAlternate.ttf</string>
-		<string>DIN-Bold.ttf</string>
-		<string>DIN-Light.ttf</string>
-		<string>DIN-Medium.ttf</string>
-		<string>DIN-Regular.ttf</string>
-	</array>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+	</dict>
+	<key>UILaunchScreen</key>
+	<dict/>
 </dict>
 </plist>

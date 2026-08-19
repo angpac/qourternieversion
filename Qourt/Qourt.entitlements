@@ -10,6 +10,15 @@
 	<array>
 		<string>$(AppIdentifierPrefix)net.criers.Qourt.shared</string>
 	</array>
+	<!-- Names the App Clip embedded in this app. The association has to be
+	     declared from both ends: the clip points up at its parent with
+	     com.apple.developer.parent-application-identifiers, and this points
+	     back down. Without it App Store Connect rejects the upload with
+	     "Missing entitlement ... com.apple.developer.associated-appclip-app-identifiers". -->
+	<key>com.apple.developer.associated-appclip-app-identifiers</key>
+	<array>
+		<string>$(AppIdentifierPrefix)net.criers.Qourt.Clip</string>
+	</array>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:qourt-web.vercel.app</string>

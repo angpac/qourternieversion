@@ -10,8 +10,13 @@ settings:
   base:
     DEVELOPMENT_TEAM: 67YBGP3A84
     SWIFT_VERSION: 5.0
+    # The one place to change app version and build number. Editing these
+    # in Xcode's UI instead does not survive `xcodegen generate` - it
+    # rewrites the project from this file, which is what kept resetting the
+    # build number. Every target inherits from here, and an App Clip is
+    # *required* to carry the same CFBundleVersion as its parent.
     MARKETING_VERSION: 1.0
-    CURRENT_PROJECT_VERSION: 42
+    CURRENT_PROJECT_VERSION: 7
 
 targets:
   Qourt:
@@ -37,44 +42,15 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         CODE_SIGN_ENTITLEMENTS: Qourt/Qourt.entitlements
     dependencies:
+      - target: QourtClip
+        embed: true
+        codeSign: true
       - target: "Qourt Watch App"
         embed: true
         codeSign: true
       - target: QourtWidgetExtension
         embed: true
         codeSign: true
-      - target: QourtAppClip
-        embed: true
-        codeSign: true
-      - package: Supabase
-        product: Supabase
-
-  QourtAppClip:
-    type: application.on-demand-install-capable
-    platform: iOS
-    sources:
-      - path: QourtAppClip
-      - path: QourtShared/Models
-      - path: QourtShared/Networking
-      # Reused as-is from the main app for a consistent look even before a
-      # dedicated App Clip design exists — both are tiny (DIN fonts total
-      # ~230KB), nowhere near the 15MB App Clip budget.
-      - path: Qourt/Core/Fonts
-      - path: Qourt/Core/Background
-      # Just the format-name/icon lookup, not the rest of Games/Models.
-      - path: Qourt/Features/Games/Models/RotationFormat.swift
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: net.criers.Qourt.Clip
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_FILE: QourtAppClip/Info.plist
-        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        CODE_SIGN_ENTITLEMENTS: QourtAppClip/QourtAppClip.entitlements
-        TARGETED_DEVICE_FAMILY: "1,2"
-    dependencies:
       - package: Supabase
         product: Supabase
 
@@ -91,6 +67,50 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: net.criers.Qourt.widget
         INFOPLIST_FILE: QourtWidgetExtension/Info.plist
         SKIP_INSTALL: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+
+  QourtClip:
+    # App Clip: what an iPhone without Qourt installed gets when it scans a
+    # game's QR code. Mirrors the web guest client rather than the full app
+    # - join by code, then watch your place in the line.
+    #
+    # No Supabase package here on purpose. App Clips have a hard
+    # uncompressed size budget, the guest flow is anon-key only, and the web
+    # client already polls instead of using Realtime, so ClipAPI does the
+    # few RPC calls over URLSession. Nothing from QourtShared either: the
+    # clip needs no auth, no Live Activities and no shared keychain.
+    type: application.on-demand-install-capable
+    platform: iOS
+    sources:
+      - path: QourtClip
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: net.criers.Qourt.Clip
+        # PRODUCT_NAME stays QourtClip - naming the product "Qourt" makes it
+        # build to Qourt.app, which collides with the parent app. The name a
+        # guest actually sees comes from CFBundleDisplayName below, and the
+        # App Clip card's title comes from App Store Connect.
+        INFOPLIST_FILE: QourtClip/Info.plist
+        # Required, and not just cosmetic. Every INFOPLIST_KEY_* setting is
+        # silently ignored unless this is YES, and so is the synthesised
+        # CFBundleVersion - which is why the clip archived with a null
+        # version and failed "The CFBundleVersion of an App Clip (null)
+        # must match that of its containing parent app". The keys below and
+        # the version both come from build settings; QourtClip/Info.plist
+        # only carries what can't be expressed that way (NSAppClip).
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Qourt
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_ENTITLEMENTS: QourtClip/QourtClip.entitlements
+        SKIP_INSTALL: YES
+        # Must match the parent app exactly, or embedded-binary validation
+        # fails at archive time with "The UIDeviceFamily of an App Clip
+        # must be equal to the UIDeviceFamily of its containing parent
+        # app". Qourt doesn't set this, so it takes the iOS default of
+        # iPhone + iPad, and the clip has to say the same thing.
         TARGETED_DEVICE_FAMILY: "1,2"
 
   "Qourt Watch App":
@@ -141,9 +161,14 @@ schemes:
         "Qourt Watch App": all
     run:
       config: Debug
-  QourtAppClip:
+  QourtClip:
     build:
       targets:
-        QourtAppClip: all
+        QourtClip: all
     run:
       config: Debug
+      # Simulates being invoked by a scanned QR code. Change the code to a
+      # real one from a game you've created; without this the clip launches
+      # to a blank join form, which is also a valid state to test.
+      environmentVariables:
+        _XCAppClipURL: https://qourt-web.vercel.app/join/ABC123

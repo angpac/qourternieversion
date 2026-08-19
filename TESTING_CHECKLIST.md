@@ -269,9 +269,47 @@ Running list of everything to manually verify, updated as features are built. Te
 - [ ] The Live Dashboard's courts grid already uses the extra iPad width automatically (more courts per row) — confirm it looks right with both few and many courts
 - [ ] Nothing regressed on iPhone — My Games still behaves exactly as a single push-navigation stack (this was true before the iPad work and must still be true)
 
+## App Clip (iOS guests without the app)
+Needs the App Store Connect setup in `docs/AppClip_Setup.md` before the QR
+cases work; everything else can be tested from the QourtClip scheme today.
+- [ ] Run the QourtClip scheme with `_XCAppClipURL` set to a real join code — lands on the join form with the code already confirmed, not a blank field
+- [ ] Clear `_XCAppClipURL` — blank join form, code is typeable
+- [ ] Bad/ended code shows the red "This game has ended" row with "Try another code"
+- [ ] Join → status screen matches the web guest client visually (emerald gradient, white card)
+- [ ] Queue position updates within ~2s of the host changing it (polling, same cadence as web)
+- [ ] Skip my turn / I'm ready / Leave game all behave as they do on the web
+- [ ] On court: report score → "Waiting for admin to confirm"
+- [ ] Announcement from the host appears in the banner
+- [ ] Peg Board game: Picker prompt appears at #1, picking 3 starts the match
+- [ ] Reopening the clip returns to the existing session, doesn't join twice under a second name
+- [ ] **Routing, on a real device:** iPhone *with* Qourt installed scans the QR → opens the app, not the clip
+- [ ] **Routing:** iPhone *without* Qourt scans the QR → App Clip card appears
+- [ ] **Routing:** Android scans the same QR → web guest client, unchanged
+- [ ] Clip's uncompressed size stays under 15 MB (Xcode → Organizer → App Thinning report)
+- [ ] Backgrounding the clip stops the 2s polling; foregrounding resumes it
+- [ ] Kill wifi mid-session → "Reconnecting…" banner appears over the last known state, then clears on reconnect
+- [ ] "Get the full app" card presents the App Store overlay; it also appears once by itself ~3s after landing
+- [ ] Scan a *different* game's QR while already joined → switches to the new game, doesn't show the old one
+- [ ] Scan the *same* game's QR again → returns to your existing spot, doesn't join twice
+- [ ] VoiceOver: score reads "Score 21 to 19"; emoji aren't announced as stray words
+- [ ] Local Experience (Settings → Developer → App Clips Testing) with prefix `https://qourt-web.vercel.app/join` launches the clip for a brand-new game's QR
+
 ## Cross-cutting
 - [ ] Same game, one browser tab as "player" + iPhone as "admin" simultaneously — confirms realtime end-to-end
 - [ ] Apple Watch: shows queue position or court+score, matches phone's signed-in account (no separate sign-in)
+
+## Apple Watch (player-only)
+The Watch is a player companion for now — hosting a game stays on the iPhone.
+- [ ] Queued: shows `#N` and `of M in line`; position `#1` reads "You're up next"
+- [ ] "Skip my turn" moves you to resting; screen shows "You're resting", not a blank/"No active game"
+- [ ] "I'm ready" puts you at the **back** of the line, not your old spot
+- [ ] "Leave game" asks to confirm first, then drops to "No active game"
+- [ ] Pending (approval-required game): shows "Waiting for approval" with "Cancel request"
+- [ ] Host sends an announcement from the phone → banner appears on the wrist within ~2s
+- [ ] Player-targeted announcement reaches only that player's Watch, game-wide reaches everyone
+- [ ] On court: report score → "Waiting for host", host confirms on phone → Watch updates
+- [ ] Signed in as an **admin**: the "Hosting" card explains courts/scoring are on the iPhone, and it shows even when the admin has no active game as a player
+- [ ] Signed in as a **non-admin**: no "Hosting" card at all
 - [ ] TestFlight external build installs and runs correctly for your teammate (once Apple's review clears)
 
 ---
