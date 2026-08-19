@@ -34,6 +34,22 @@ final class WatchHostViewModel {
     private var realtimeChannel: RealtimeChannelV2?
     private var realtimeSubscriptions: [RealtimeSubscription] = []
 
+    /// Lightweight admin probe. The host experience isn't on the Watch yet,
+    /// but the app still needs to know whether this user runs a game so it
+    /// can say so plainly instead of showing them an empty player screen.
+    /// Deliberately does no court loading and opens no realtime channel.
+    @MainActor
+    func checkIsAdmin() async {
+        guard let userID = (try? await supabase.auth.session)?.user.id else {
+            isAdmin = false
+            return
+        }
+        await resolveAdminGame(userID: userID)
+        isAdmin = gameID != nil
+    }
+
+    /// Full host load — courts, scores and realtime. Not reachable from the
+    /// UI yet; see `HostCourtsView` for the pending host experience.
     @MainActor
     func start() async {
         isLoading = true

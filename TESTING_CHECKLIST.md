@@ -272,6 +272,19 @@ Running list of everything to manually verify, updated as features are built. Te
 ## Cross-cutting
 - [ ] Same game, one browser tab as "player" + iPhone as "admin" simultaneously — confirms realtime end-to-end
 - [ ] Apple Watch: shows queue position or court+score, matches phone's signed-in account (no separate sign-in)
+
+## Apple Watch (player-only)
+The Watch is a player companion for now — hosting a game stays on the iPhone.
+- [ ] Queued: shows `#N` and `of M in line`; position `#1` reads "You're up next"
+- [ ] "Skip my turn" moves you to resting; screen shows "You're resting", not a blank/"No active game"
+- [ ] "I'm ready" puts you at the **back** of the line, not your old spot
+- [ ] "Leave game" asks to confirm first, then drops to "No active game"
+- [ ] Pending (approval-required game): shows "Waiting for approval" with "Cancel request"
+- [ ] Host sends an announcement from the phone → banner appears on the wrist within ~2s
+- [ ] Player-targeted announcement reaches only that player's Watch, game-wide reaches everyone
+- [ ] On court: report score → "Waiting for host", host confirms on phone → Watch updates
+- [ ] Signed in as an **admin**: the "Hosting" card explains courts/scoring are on the iPhone, and it shows even when the admin has no active game as a player
+- [ ] Signed in as a **non-admin**: no "Hosting" card at all
 - [ ] TestFlight external build installs and runs correctly for your teammate (once Apple's review clears)
 
 ---

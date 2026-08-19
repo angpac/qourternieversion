@@ -1,6 +1,9 @@
 //
 //  Announcement.swift
-//  Qourt
+//  QourtShared/Models
+//
+//  Shared so the Watch can read the same announcements the phone does.
+//  Foundation-only, per the rule for this folder.
 //
 
 import Foundation
