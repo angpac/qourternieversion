@@ -107,25 +107,50 @@ private struct LockScreenView: View {
     }
 }
 
+private let previewOnCourtState = PlayerActivityAttributes.ContentState(
+    status: "onCourt",
+    queuePosition: nil,
+    courtName: "Court 2",
+    teammateNames: "Alex Chen",
+    opponentNames: "Jamie Lee & Sam Park",
+    scoreA: 11,
+    scoreB: 7
+)
+
+private let previewQueuedState = PlayerActivityAttributes.ContentState(
+    status: "queued",
+    queuePosition: 3,
+    courtName: nil,
+    teammateNames: nil,
+    opponentNames: nil,
+    scoreA: nil,
+    scoreB: nil
+)
+
 #Preview("Notification", as: .content, using: PlayerActivityAttributes(gameName: "Sunday Open Play")) {
     PlayerActivityWidget()
 } contentStates: {
-    PlayerActivityAttributes.ContentState(
-        status: "onCourt",
-        queuePosition: nil,
-        courtName: "Court 2",
-        teammateNames: "Alex Chen",
-        opponentNames: "Jamie Lee & Sam Park",
-        scoreA: 11,
-        scoreB: 7
-    )
-    PlayerActivityAttributes.ContentState(
-        status: "queued",
-        queuePosition: 3,
-        courtName: nil,
-        teammateNames: nil,
-        opponentNames: nil,
-        scoreA: nil,
-        scoreB: nil
-    )
+    previewOnCourtState
+    previewQueuedState
+}
+
+#Preview("Dynamic Island Compact", as: .dynamicIsland(.compact), using: PlayerActivityAttributes(gameName: "Sunday Open Play")) {
+    PlayerActivityWidget()
+} contentStates: {
+    previewOnCourtState
+    previewQueuedState
+}
+
+#Preview("Dynamic Island Expanded", as: .dynamicIsland(.expanded), using: PlayerActivityAttributes(gameName: "Sunday Open Play")) {
+    PlayerActivityWidget()
+} contentStates: {
+    previewOnCourtState
+    previewQueuedState
+}
+
+#Preview("Dynamic Island Minimal", as: .dynamicIsland(.minimal), using: PlayerActivityAttributes(gameName: "Sunday Open Play")) {
+    PlayerActivityWidget()
+} contentStates: {
+    previewOnCourtState
+    previewQueuedState
 }
