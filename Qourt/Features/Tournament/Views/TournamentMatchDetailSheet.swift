@@ -12,6 +12,7 @@ struct TournamentMatchDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var scoreA = 0
     @State private var scoreB = 0
+    @State private var isSaving = false
 
     private var match: MatchWithPlayers? { viewModel.activeMatches[tournamentMatch.id] }
 
@@ -35,22 +36,39 @@ struct TournamentMatchDetailSheet: View {
                     score: $scoreB
                 )
 
-                Button {
-                    Task {
-                        await viewModel.endMatch(tournamentMatch, scoreA: scoreA, scoreB: scoreB)
-                        dismiss()
-                    }
-                } label: {
-                    Text("End match")
+                if match?.match.status == .confirmed {
+                    Text("Match already ended")
                         .font(.custom("DIN-Medium", size: 16))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                } else {
+                    Button {
+                        Task {
+                            isSaving = true
+                            await viewModel.endMatch(tournamentMatch, scoreA: scoreA, scoreB: scoreB)
+                            isSaving = false
+                            dismiss()
+                        }
+                    } label: {
+                        Group {
+                            if isSaving {
+                                ProgressView()
+                                    .tint(.white)
+                            } else {
+                                Text("End match")
+                                    .font(.custom("DIN-Medium", size: 16))
+                                    .foregroundStyle(.white)
+                            }
+                        }
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(scoreA == scoreB ? Color(.systemGray5) : accentColor, in: Capsule())
                         .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(scoreA == scoreB || isSaving)
                 }
-                .buttonStyle(.plain)
-                .disabled(scoreA == scoreB)
 
                 Spacer()
             }

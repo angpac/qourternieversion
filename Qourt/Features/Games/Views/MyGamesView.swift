@@ -116,7 +116,13 @@ struct MyGamesView: View {
                 games[index] = updated
             }
         case .delete(let delete):
-            guard let removed = try? delete.decodeOldRecord(as: Game.self, decoder: AnyJSON.decoder) else { return }
+            // Postgres's default replica identity puts only the primary
+            // key in a DELETE's old-row payload, not the full row — so
+            // decoding straight into `Game` (which needs `name`,
+            // `numCourts`, and every other required field) silently
+            // failed via `try?` and this case never actually fired.
+            struct DeletedGameID: Decodable { let id: UUID }
+            guard let removed = try? delete.decodeOldRecord(as: DeletedGameID.self, decoder: AnyJSON.decoder) else { return }
             withAnimation {
                 games.removeAll { $0.id == removed.id }
             }
@@ -470,7 +476,18 @@ struct MyGamesView: View {
             if game.hasEnded {
                 GameSummaryView(game: game)
             } else {
-                LiveDashboardView(game: game)
+                LiveDashboardView(game: game, onGameEnded: {
+                    // Update locally first — the realtime event that would
+                    // otherwise move this into Ended is a separate
+                    // round-trip and can lag behind clearing the
+                    // selection, which would drop the admin back on My
+                    // Games with the game still sitting under Ongoing for
+                    // a beat.
+                    if let index = games.firstIndex(where: { $0.id == game.id }) {
+                        games[index].status = "ended"
+                    }
+                    selectedGame = nil
+                })
             }
         } else if game.format.isTournament {
             PlayerBracketView(game: game)
@@ -556,9 +573,15 @@ struct MyGamesView: View {
                 .eq("id", value: game.id)
                 .execute()
             if selectedGame == game { selectedGame = nil }
-            // Same reasoning as setArchived: the realtime subscription's
-            // applyGameChange already removes the row on the delete event,
-            // so reloading here would fight that animation.
+            withAnimation {
+                games.removeAll { $0.id == game.id }
+            }
+            // No loadGames() here — same reasoning as setArchived, a full
+            // reload would fight the animation above. The realtime
+            // subscription's applyGameChange also removes this row when
+            // its own delete event arrives, which is a harmless no-op
+            // against an array that no longer has it, and is what keeps
+            // another co-admin's device in sync with this deletion.
         } catch {
             errorMessage = error.localizedDescription
         }

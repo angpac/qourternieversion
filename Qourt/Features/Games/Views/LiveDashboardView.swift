@@ -25,13 +25,20 @@ struct LiveDashboardView: View {
     /// inside a modal.
     private var onExitToGamesList: (() -> Void)?
 
+    /// Called once `endGame()` succeeds so the caller can clear its
+    /// selection and drop back to the My Games list — staying on the
+    /// now-ended game's dashboard would just leave the admin looking at a
+    /// bracket/court grid that can't do anything anymore.
+    private var onGameEnded: (() -> Void)?
+
     private let labelColor = Color.appSecondaryText
     private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
     private let destructiveColor = Color(red: 0xFF / 255, green: 0x42 / 255, blue: 0x45 / 255)
 
-    init(game: Game, onExitToGamesList: (() -> Void)? = nil) {
+    init(game: Game, onExitToGamesList: (() -> Void)? = nil, onGameEnded: (() -> Void)? = nil) {
         _viewModel = State(initialValue: LiveDashboardViewModel(game: game))
         self.onExitToGamesList = onExitToGamesList
+        self.onGameEnded = onGameEnded
     }
 
     var body: some View {
@@ -181,7 +188,10 @@ struct LiveDashboardView: View {
             titleVisibility: .visible
         ) {
             Button("End game", role: .destructive) {
-                Task { await viewModel.endGame() }
+                Task {
+                    await viewModel.endGame()
+                    onGameEnded?()
+                }
             }
         } message: {
             Text("Its join code, link, and QR code will stop working. This can't be undone.")

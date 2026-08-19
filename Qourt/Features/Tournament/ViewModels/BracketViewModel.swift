@@ -36,8 +36,18 @@ final class BracketViewModel {
         tournamentMatches.filter(\.isReadyToStart).sorted { ($0.round, $0.slot) < ($1.round, $1.slot) }
     }
 
+    /// `activeMatches` keeps a finished tournament match's row around
+    /// forever (its `matchId` is never cleared) so the bracket can keep
+    /// showing the final score and winner — but that means a plain
+    /// `courtId` lookup here would treat every court that ever hosted a
+    /// match as permanently occupied. Only a match still actually being
+    /// played holds its court.
     var openCourts: [Court] {
-        let busyCourtIDs = Set(activeMatches.values.compactMap(\.match.courtId))
+        let busyCourtIDs = Set(
+            activeMatches.values
+                .filter { $0.match.status != .confirmed && $0.match.status != .cancelled }
+                .compactMap(\.match.courtId)
+        )
         return courts.filter { !busyCourtIDs.contains($0.id) }
     }
 
