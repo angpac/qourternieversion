@@ -40,6 +40,12 @@ enum ClipTheme {
     static let red300 = Color(red: 0xFC / 255, green: 0xA5 / 255, blue: 0xA5 / 255)
     static let red50 = Color(red: 0xFE / 255, green: 0xF2 / 255, blue: 0xF2 / 255)
 
+    /// Matches Tailwind's `max-w-sm` on the web pages. The clip inherits
+    /// the parent app's iPhone + iPad device family (it has to, or archive
+    /// validation rejects the mismatch), so without a cap the card would
+    /// stretch the full width of an iPad.
+    static let columnWidth: CGFloat = 384
+
     /// The page background on the web: a vertical emerald gradient.
     static var background: LinearGradient {
         LinearGradient(

@@ -40,9 +40,11 @@ struct ClipJoinView: View {
                         joinButton
                     }
                 }
-                .padding(.horizontal, 24)
             }
+            .frame(maxWidth: ClipTheme.columnWidth)
+            .padding(.horizontal, 24)
             .padding(.vertical, 48)
+            .frame(maxWidth: .infinity)
         }
         .scrollDismissesKeyboard(.interactively)
         .background(ClipTheme.background.ignoresSafeArea())

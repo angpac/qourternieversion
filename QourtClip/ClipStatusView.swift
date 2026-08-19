@@ -115,8 +115,10 @@ struct ClipStatusView: View {
                     .font(.system(.subheadline, design: .monospaced))
                     .foregroundStyle(ClipTheme.emerald100)
             }
+            .frame(maxWidth: ClipTheme.columnWidth)
             .padding(.horizontal, 24)
             .padding(.vertical, 48)
+            .frame(maxWidth: .infinity)
         }
         .refreshable { await viewModel.refresh() }
     }
