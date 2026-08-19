@@ -88,12 +88,17 @@ struct ClubsListView: View {
             NavigationStack {
                 VStack(spacing: 0) {
                     HStack {
-                        Button("Cancel") { isRedeemingInvite = false }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .foregroundStyle(.primary)
-                            .background(Color(.systemGray5), in: Capsule())
-                            .buttonStyle(.plain)
+                        Button {
+                            isRedeemingInvite = false
+                        } label: {
+                            Text("Cancel")
+                                .foregroundStyle(.primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color(.systemGray5), in: Capsule())
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
 
                         Spacer()
 
@@ -102,13 +107,16 @@ struct ClubsListView: View {
 
                         Spacer()
 
-                        Button("Join") {
+                        Button {
                             Task { await redeemInvite() }
+                        } label: {
+                            Text("Join")
+                                .foregroundStyle(isJoinActive ? .white : .primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(isJoinActive ? accentColor : Color(.systemGray5), in: Capsule())
+                                .contentShape(Capsule())
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .foregroundStyle(isJoinActive ? .white : .primary)
-                        .background(isJoinActive ? accentColor : Color(.systemGray5), in: Capsule())
                         .buttonStyle(.plain)
                         .disabled(!isJoinActive)
                     }

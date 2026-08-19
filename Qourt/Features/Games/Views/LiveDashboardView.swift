@@ -309,20 +309,21 @@ struct LiveDashboardView: View {
                 Button {
                     Task { await viewModel.rotateKingOfTheCourt() }
                 } label: {
-                    if viewModel.isRotating {
-                        ProgressView()
-                            .tint(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                    } else {
-                        Text("End round now")
-                            .font(.custom("DIN-Medium", size: 15))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
+                    Group {
+                        if viewModel.isRotating {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Text("End round now")
+                                .font(.custom("DIN-Medium", size: 15))
+                                .foregroundStyle(.white)
+                        }
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(destructiveColor, in: Capsule())
+                    .contentShape(Capsule())
                 }
-                .background(destructiveColor, in: Capsule())
                 .buttonStyle(.plain)
                 .disabled(viewModel.isRotating || viewModel.isPaused)
             } else {
@@ -337,8 +338,9 @@ struct LiveDashboardView: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 10)
+                        .background(accentColor, in: Capsule())
+                        .contentShape(Capsule())
                 }
-                .background(accentColor, in: Capsule())
                 .buttonStyle(.plain)
                 .disabled(viewModel.isPaused)
             }
@@ -388,8 +390,9 @@ struct LiveDashboardView: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
+                            .background(accentColor, in: Capsule())
+                            .contentShape(Capsule())
                     }
-                    .background(accentColor, in: Capsule())
                     .buttonStyle(.plain)
                 }
             } else {
@@ -445,8 +448,9 @@ struct LiveDashboardView: View {
                         .foregroundStyle(Color.appOnInverseSurface)
                         .frame(maxWidth: .infinity)
                         .padding()
+                        .background(Color.appInverseSurface, in: Capsule())
+                        .contentShape(Capsule())
                 }
-                .background(Color.appInverseSurface, in: Capsule())
                 .buttonStyle(.plain)
             }
         }

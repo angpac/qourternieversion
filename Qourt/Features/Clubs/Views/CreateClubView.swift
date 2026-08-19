@@ -98,19 +98,20 @@ struct CreateClubView: View {
                 Button {
                     Task { await createClub() }
                 } label: {
-                    if isCreating {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                    } else {
-                        Text("Create Club")
-                            .font(.custom("DIN-Medium", size: 16))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
+                    Group {
+                        if isCreating {
+                            ProgressView()
+                        } else {
+                            Text("Create Club")
+                                .font(.custom("DIN-Medium", size: 16))
+                                .foregroundStyle(.white)
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(isNameEmpty ? Color(.systemGray5) : accentColor, in: Capsule())
+                    .contentShape(Capsule())
                 }
-                .background(isNameEmpty ? Color(.systemGray5) : accentColor, in: Capsule())
                 .buttonStyle(.plain)
                 .disabled(isNameEmpty || isCreating)
                 .padding()

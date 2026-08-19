@@ -41,8 +41,9 @@ struct SendAnnouncementSheet: View {
                                 .foregroundStyle(Color.primary)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
+                                .background(Color(.systemGray5), in: Capsule())
+                                .contentShape(Capsule())
                         }
-                        .background(Color(.systemGray5), in: Capsule())
                         .buttonStyle(.plain)
 
                         Spacer()
@@ -62,8 +63,9 @@ struct SendAnnouncementSheet: View {
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
+                            .background(isMessageEmpty ? Color(.systemGray5) : accentColor, in: Capsule())
+                            .contentShape(Capsule())
                         }
-                        .background(isMessageEmpty ? Color(.systemGray5) : accentColor, in: Capsule())
                         .buttonStyle(.plain)
                         .disabled(isMessageEmpty || isSending)
                     }

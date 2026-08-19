@@ -162,39 +162,48 @@ struct PlayerLiveStatusView: View {
         VStack(spacing: 8) {
             switch player.status {
             case .queued:
-                Button("Skip my turn") {
+                Button {
                     Task { await viewModel.stepOut() }
+                } label: {
+                    Text("Skip my turn")
+                        .font(.custom("DIN-Medium", size: 16))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(accentColor, in: RoundedRectangle(cornerRadius: 12))
+                        .contentShape(RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
-                .font(.custom("DIN-Medium", size: 16))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(accentColor, in: RoundedRectangle(cornerRadius: 12))
             case .resting:
-                Button("I'm ready to play") {
+                Button {
                     Task { await viewModel.stepBackIn() }
+                } label: {
+                    Text("I'm ready to play")
+                        .font(.custom("DIN-Medium", size: 16))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(accentColor, in: RoundedRectangle(cornerRadius: 12))
+                        .contentShape(RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
-                .font(.custom("DIN-Medium", size: 16))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(accentColor, in: RoundedRectangle(cornerRadius: 12))
             default:
                 EmptyView()
             }
 
             if player.status == .queued || player.status == .resting || player.status == .pending {
-                Button(player.status == .pending ? "Cancel request" : "Leave game", role: .destructive) {
+                Button(role: .destructive) {
                     isConfirmingLeave = true
+                } label: {
+                    Text(player.status == .pending ? "Cancel request" : "Leave game")
+                        .font(.custom("DIN-Medium", size: 16))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(destructiveColor, in: RoundedRectangle(cornerRadius: 12))
+                        .contentShape(RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
-                .font(.custom("DIN-Medium", size: 16))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(destructiveColor, in: RoundedRectangle(cornerRadius: 12))
             }
         }
     }
@@ -321,8 +330,9 @@ struct PlayerLiveStatusView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
+                    .background(accentColor, in: Capsule())
+                    .contentShape(Capsule())
             }
-            .background(accentColor, in: Capsule())
             .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity)

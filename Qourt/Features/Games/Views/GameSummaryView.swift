@@ -127,8 +127,9 @@ struct GameSummaryView: View {
                                     .foregroundStyle(.white)
                                     .frame(maxWidth: .infinity)
                                     .padding()
+                                    .background(accentColor, in: Capsule())
+                                    .contentShape(Capsule())
                             }
-                            .background(accentColor, in: Capsule())
                             .buttonStyle(.plain)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)

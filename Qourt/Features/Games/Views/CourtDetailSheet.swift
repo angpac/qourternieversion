@@ -67,8 +67,9 @@ struct CourtDetailSheet: View {
                                 .foregroundStyle(Color.primary)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
+                                .background(Color(.systemGray5), in: Capsule())
+                                .contentShape(Capsule())
                         }
-                        .background(Color(.systemGray5), in: Capsule())
                         .buttonStyle(.plain)
 
                         Spacer()
@@ -106,20 +107,21 @@ struct CourtDetailSheet: View {
                                 }
                             }
                         } label: {
-                            if isSaving {
-                                ProgressView()
-                                    .tint(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
-                            } else {
-                                Text("Clear court & assign players")
-                                    .font(.custom("DIN-Medium", size: 16))
-                                    .foregroundStyle(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
+                            Group {
+                                if isSaving {
+                                    ProgressView()
+                                        .tint(.white)
+                                } else {
+                                    Text("Clear court & assign players")
+                                        .font(.custom("DIN-Medium", size: 16))
+                                        .foregroundStyle(.white)
+                                }
                             }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(destructiveColor, in: Capsule())
+                            .contentShape(Capsule())
                         }
-                        .background(destructiveColor, in: Capsule())
                         .buttonStyle(.plain)
                         .disabled(isSaving)
                     } else {
@@ -156,20 +158,21 @@ struct CourtDetailSheet: View {
                                 dismiss()
                             }
                         } label: {
-                            if isSaving {
-                                ProgressView()
-                                    .tint(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
-                            } else {
-                                Text(isConfirmingReportedScore ? "Confirm" : "End match")
-                                    .font(.custom("DIN-Medium", size: 16))
-                                    .foregroundStyle(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
+                            Group {
+                                if isSaving {
+                                    ProgressView()
+                                        .tint(.white)
+                                } else {
+                                    Text(isConfirmingReportedScore ? "Confirm" : "End match")
+                                        .font(.custom("DIN-Medium", size: 16))
+                                        .foregroundStyle(.white)
+                                }
                             }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(accentColor, in: Capsule())
+                            .contentShape(Capsule())
                         }
-                        .background(accentColor, in: Capsule())
                         .buttonStyle(.plain)
                         .disabled(isSaving)
                     }

@@ -26,12 +26,17 @@ struct InvitePlayersView: View {
 
                 Spacer()
 
-                Button("Done") { onFinished() }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .foregroundStyle(.white)
-                    .background(accentColor, in: Capsule())
-                    .buttonStyle(.plain)
+                Button {
+                    onFinished()
+                } label: {
+                    Text("Done")
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .foregroundStyle(.white)
+                        .background(accentColor, in: Capsule())
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
             }
             .padding()
 

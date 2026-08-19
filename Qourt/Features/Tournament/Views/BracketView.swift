@@ -160,8 +160,9 @@ struct BracketView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
+                    .background(accentColor, in: Capsule())
+                    .contentShape(Capsule())
             }
-            .background(accentColor, in: Capsule())
             .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity)
@@ -204,10 +205,11 @@ struct BracketView: View {
                         Spacer()
                         Image(systemName: "play.circle.fill").foregroundStyle(accentColor)
                     }
+                    .padding(10)
+                    .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 10))
+                    .contentShape(RoundedRectangle(cornerRadius: 10))
                 }
                 .buttonStyle(.plain)
-                .padding(10)
-                .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 10))
             }
         }
     }
@@ -257,10 +259,11 @@ struct BracketView: View {
                         .foregroundStyle(labelColor)
                 }
             }
+            .padding(10)
+            .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 10))
+            .contentShape(RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
-        .padding(10)
-        .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 10))
         .disabled(mwp == nil)
     }
 

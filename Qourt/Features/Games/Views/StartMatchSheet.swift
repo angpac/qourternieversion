@@ -39,8 +39,9 @@ struct StartMatchSheet: View {
                                 .foregroundStyle(Color.primary)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
+                                .background(Color(.systemGray5), in: Capsule())
+                                .contentShape(Capsule())
                         }
-                        .background(Color(.systemGray5), in: Capsule())
                         .buttonStyle(.plain)
 
                         Spacer()
@@ -65,8 +66,9 @@ struct StartMatchSheet: View {
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
+                            .background(canStart ? accentColor : Color(.systemGray5), in: Capsule())
+                            .contentShape(Capsule())
                         }
-                        .background(canStart ? accentColor : Color(.systemGray5), in: Capsule())
                         .buttonStyle(.plain)
                         .disabled(!canStart || isStarting)
                     }
@@ -103,6 +105,7 @@ struct StartMatchSheet: View {
                                                 .foregroundStyle(labelColor)
                                         }
                                         .padding()
+                                        .contentShape(Rectangle())
                                     }
                                     .buttonStyle(.plain)
                                     .disabled(teamA.count == perTeam && teamB.count == perTeam)
@@ -178,6 +181,7 @@ struct StartMatchSheet: View {
                                     .foregroundStyle(labelColor)
                             }
                             .padding()
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
 

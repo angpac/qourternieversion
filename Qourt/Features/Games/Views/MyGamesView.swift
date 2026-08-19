@@ -175,9 +175,6 @@ struct MyGamesView: View {
                                     .tag(game)
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
-                                    .swipeActions(edge: .trailing) {
-                                        rowActions(for: game)
-                                    }
                             }
                         } header: {
                             Text("Ongoing")
@@ -391,12 +388,17 @@ struct MyGamesView: View {
             NavigationStack {
                 VStack(spacing: 0) {
                     HStack {
-                        Button("Cancel") { isRedeemingAdminInvite = false }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .foregroundStyle(Color.primary)
-                            .background(Color(.systemGray5), in: Capsule())
-                            .buttonStyle(.plain)
+                        Button {
+                            isRedeemingAdminInvite = false
+                        } label: {
+                            Text("Cancel")
+                                .foregroundStyle(Color.primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color(.systemGray5), in: Capsule())
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
 
                         Spacer()
 
@@ -405,18 +407,21 @@ struct MyGamesView: View {
 
                         Spacer()
 
-                        Button("Join") {
+                        Button {
                             Task { await redeemAdminInvite() }
+                        } label: {
+                            Text("Join")
+                                .foregroundStyle(adminInviteCode.trimmingCharacters(in: .whitespaces).isEmpty ? .black : .white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(
+                                    adminInviteCode.trimmingCharacters(in: .whitespaces).isEmpty
+                                        ? Color(.systemGray5)
+                                        : Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255),
+                                    in: Capsule()
+                                )
+                                .contentShape(Capsule())
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .foregroundStyle(adminInviteCode.trimmingCharacters(in: .whitespaces).isEmpty ? .black : .white)
-                        .background(
-                            adminInviteCode.trimmingCharacters(in: .whitespaces).isEmpty
-                                ? Color(.systemGray5)
-                                : Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255),
-                            in: Capsule()
-                        )
                         .buttonStyle(.plain)
                         .disabled(adminInviteCode.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
@@ -508,8 +513,10 @@ struct MyGamesView: View {
         .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
     }
 
-    /// Trailing swipe actions, shared by every section so a row behaves the
-    /// same wherever it sits.
+    /// Trailing swipe actions, shared by the Ended and Archived sections.
+    /// Ongoing games skip this entirely — archiving or deleting a game
+    /// that's still being played out from under it isn't something the
+    /// list should offer.
     ///
     /// Archive is declared first, which makes it the full-swipe action —
     /// the fast gesture does the reversible thing. Delete is deliberately a

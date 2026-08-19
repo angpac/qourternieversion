@@ -464,6 +464,42 @@ final class LiveDashboardViewModel {
         }
     }
 
+    /// Bulk variant of `addWalkIn` for filling out a roster in one pass —
+    /// assigns consecutive queue positions locally off a single fetched
+    /// starting point instead of round-tripping `nextQueuePosition()` per
+    /// row, and inserts everything in one request.
+    @MainActor
+    func addWalkIns(_ entries: [(name: String, skillLevel: String)]) async {
+        struct NewWalkIn: Encodable {
+            let game_id: UUID
+            let display_name: String
+            let skill_level: String
+            let queue_position: Int
+        }
+
+        let trimmed = entries
+            .map { (name: $0.name.trimmingCharacters(in: .whitespacesAndNewlines), skillLevel: $0.skillLevel) }
+            .filter { !$0.name.isEmpty }
+        guard !trimmed.isEmpty else { return }
+
+        let startPosition = await nextQueuePosition()
+        let rows = trimmed.enumerated().map { index, entry in
+            NewWalkIn(
+                game_id: game.id,
+                display_name: entry.name,
+                skill_level: entry.skillLevel,
+                queue_position: startPosition + index
+            )
+        }
+
+        do {
+            try await supabase.from("game_players").insert(rows).execute()
+            await loadAll()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     /// Swaps one player out of an already-in-progress match for someone
     /// from the queue, keeping the match, court, and score exactly as they
     /// are — meant for exceptions (an injury, someone has to leave

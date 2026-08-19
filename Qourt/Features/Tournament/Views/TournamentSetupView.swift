@@ -95,21 +95,23 @@ struct TournamentSetupView: View {
                         }
                     }
                 } label: {
-                    if viewModel.isGenerating {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Text("Generate bracket")
-                            .font(.custom("DIN-Medium", size: 16))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
+                    Group {
+                        if viewModel.isGenerating {
+                            ProgressView()
+                        } else {
+                            Text("Generate bracket")
+                                .font(.custom("DIN-Medium", size: 16))
+                                .foregroundStyle(.white)
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(
+                        (viewModel.isGenerating || viewModel.roster.count < 2) ? Color(.systemGray5) : accentColor,
+                        in: Capsule()
+                    )
+                    .contentShape(Capsule())
                 }
-                .background(
-                    (viewModel.isGenerating || viewModel.roster.count < 2) ? Color(.systemGray5) : accentColor,
-                    in: Capsule()
-                )
                 .buttonStyle(.plain)
                 .disabled(viewModel.isGenerating || viewModel.roster.count < 2)
                 .listRowBackground(Color.clear)

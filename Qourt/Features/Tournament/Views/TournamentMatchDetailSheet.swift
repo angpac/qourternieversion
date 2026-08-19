@@ -46,8 +46,9 @@ struct TournamentMatchDetailSheet: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
+                        .background(scoreA == scoreB ? Color(.systemGray5) : accentColor, in: Capsule())
+                        .contentShape(Capsule())
                 }
-                .background(scoreA == scoreB ? Color(.systemGray5) : accentColor, in: Capsule())
                 .buttonStyle(.plain)
                 .disabled(scoreA == scoreB)
 

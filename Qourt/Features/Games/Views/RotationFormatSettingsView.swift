@@ -137,20 +137,21 @@ struct RotationFormatSettingsView: View {
                         }
                     }
                 } label: {
-                    if isCreating {
-                        ProgressView()
-                            .tint(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                    } else {
-                        Text("Create game")
-                            .font(.custom("DIN-Medium", size: 16))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
+                    Group {
+                        if isCreating {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Text("Create game")
+                                .font(.custom("DIN-Medium", size: 16))
+                                .foregroundStyle(.white)
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(accentColor, in: Capsule())
+                    .contentShape(Capsule())
                 }
-                .background(accentColor, in: Capsule())
                 .buttonStyle(.plain)
                 .disabled(isCreating)
                 .listRowBackground(Color.clear)
