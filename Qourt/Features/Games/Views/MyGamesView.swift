@@ -316,7 +316,7 @@ struct MyGamesView: View {
             }
             .presentationBackground(Color.appBackground)
         }
-        .sheet(isPresented: $isShowingSettings) {
+        .navigationDestination(isPresented: $isShowingSettings) {
             SettingsView(auth: auth)
         }
         .sheet(
@@ -336,14 +336,8 @@ struct MyGamesView: View {
                 }
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button {
+                        Button("Cancel") {
                             isChoosingTemplate = false
-                        } label: {
-                            Text("Cancel")
-                                .foregroundStyle(Color.primary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color(.systemGray5), in: Capsule())
                         }
                     }
                 }

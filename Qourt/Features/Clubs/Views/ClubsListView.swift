@@ -84,34 +84,54 @@ struct ClubsListView: View {
             }
         }
         .sheet(isPresented: $isRedeemingInvite) {
+            let isJoinActive = !inviteCode.trimmingCharacters(in: .whitespaces).isEmpty
             NavigationStack {
-                Form {
-                    Section {
-                        TextField("Invite code", text: $inviteCode)
-                            .textInputAutocapitalization(.characters)
-                            .autocorrectionDisabled()
-                    } footer: {
-                        Text("Ask the club's owner for their club admin invite code.")
-                    }
-                    if let inviteError {
-                        Section {
-                            Text(inviteError).foregroundStyle(.red)
-                        }
-                    }
-                }
-                .navigationTitle("Join as club admin")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
+                VStack(spacing: 0) {
+                    HStack {
                         Button("Cancel") { isRedeemingInvite = false }
-                    }
-                    ToolbarItem(placement: .confirmationAction) {
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .foregroundStyle(.primary)
+                            .background(Color(.systemGray5), in: Capsule())
+                            .buttonStyle(.plain)
+
+                        Spacer()
+
+                        Text("Join as club admin")
+                            .font(.headline)
+
+                        Spacer()
+
                         Button("Join") {
                             Task { await redeemInvite() }
                         }
-                        .disabled(inviteCode.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .foregroundStyle(isJoinActive ? .white : .primary)
+                        .background(isJoinActive ? accentColor : Color(.systemGray5), in: Capsule())
+                        .buttonStyle(.plain)
+                        .disabled(!isJoinActive)
                     }
+                    .padding()
+
+                    Form {
+                        Section {
+                            TextField("Invite code", text: $inviteCode)
+                                .textInputAutocapitalization(.characters)
+                                .autocorrectionDisabled()
+                        } footer: {
+                            Text("Ask the club's owner for their club admin invite code.")
+                        }
+                        if let inviteError {
+                            Section {
+                                Text(inviteError).foregroundStyle(.red)
+                            }
+                        }
+                    }
+                    .scrollContentBackground(.hidden)
                 }
+                .background(Color.appBackground.ignoresSafeArea())
+                .toolbar(.hidden, for: .navigationBar)
             }
         }
         .task { await viewModel.load() }
