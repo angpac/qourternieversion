@@ -30,17 +30,28 @@ Developer portal → Certificates, IDs & Profiles → Identifiers → **+**
 - It must be created as an *App Clip* identifier nested under
   `net.criers.Qourt`, not as a standalone app ID
 
-### 2. Verify the AASA is live
+### 2. Verify the AASA is live — DONE (2026-08-19)
 
-Already served by the web app, but it has to be reachable before iOS will
-trust it:
+Deployed to production and verified: HTTP 200, `application/json`, no
+redirect, and both keys present.
 
 ```
-curl -s https://qourt-web.vercel.app/.well-known/apple-app-site-association | jq
+curl -s https://qourt-web.vercel.app/.well-known/apple-app-site-association
 ```
 
-Expect both an `applinks` and an `appclips` key. It must come back as
-`application/json`, HTTP 200, with no redirect.
+Re-check with that after any web deploy. If `appclips` is missing, the web
+app has been deployed from a commit that predates it.
+
+**Deploying from the CLI:** run `vercel --prod` from the **repo root**, not
+from `web/`. The Vercel project's Root Directory is already set to `web`,
+so deploying from inside `web/` resolves to `web/web` and fails with "The
+provided path does not exist". The repo root is linked for this reason.
+
+**Preview builds:** `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` were originally scoped to the `dhkst`
+preview branch only, so every other branch's preview build failed at
+prerender with "supabaseUrl is required". They're now set for all preview
+branches.
 
 ### 3. Register an Advanced App Clip Experience
 
@@ -64,6 +75,8 @@ A QR scanned in the Camera app gets the App Clip card directly. A link
 *tapped into Safari* gets a Smart App Banner instead, and that banner needs
 the app's numeric App Store ID.
 
+As of 2026-08-19 the app isn't on the App Store yet (an iTunes lookup for
+`net.criers.Qourt` returns no results), so this ID doesn't exist to be set.
 Once the app has one, set it in Vercel:
 
 ```
