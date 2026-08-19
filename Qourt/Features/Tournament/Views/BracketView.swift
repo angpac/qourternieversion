@@ -10,6 +10,7 @@ struct BracketView: View {
     @State private var matchToStart: TournamentMatch?
     @State private var matchToScore: TournamentMatch?
     @State private var isShowingSetup = false
+    @State private var isShowingScoreboard = false
 
     private let labelColor = Color.appSecondaryText
     private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
@@ -59,9 +60,22 @@ struct BracketView: View {
         .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("Bracket")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    isShowingScoreboard = true
+                } label: {
+                    Label("Scoreboard", systemImage: "rectangle.on.rectangle")
+                }
+                .disabled(viewModel.tournament == nil)
+            }
+        }
         .task { await viewModel.start() }
         .onDisappear { viewModel.stop() }
         .refreshable { await viewModel.loadAll() }
+        .fullScreenCover(isPresented: $isShowingScoreboard) {
+            TournamentScoreboardView(viewModel: viewModel)
+        }
         .sheet(item: $matchToStart) { tm in
             NavigationStack {
                 List(viewModel.openCourts) { court in

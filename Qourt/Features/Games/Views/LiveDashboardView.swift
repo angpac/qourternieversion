@@ -16,6 +16,7 @@ struct LiveDashboardView: View {
     @State private var isSendingAnnouncement = false
     @State private var isShowingCoAdmins = false
     @State private var isShowingCourts = false
+    @State private var isShowingScoreboard = false
 
     /// Set only when this view is pushed from the just-created-game flow
     /// (inside CreateGameView's own sheet/NavigationStack) rather than
@@ -171,6 +172,9 @@ struct LiveDashboardView: View {
                     }
             }
         }
+        .fullScreenCover(isPresented: $isShowingScoreboard) {
+            ScoreboardView(viewModel: viewModel)
+        }
         .confirmationDialog(
             "End this game?",
             isPresented: $isConfirmingEndGame,
@@ -216,6 +220,11 @@ struct LiveDashboardView: View {
                 isShowingCourts = true
             } label: {
                 Label("Manage courts", systemImage: "sportscourt")
+            }
+            Button {
+                isShowingScoreboard = true
+            } label: {
+                Label("Scoreboard", systemImage: "rectangle.on.rectangle")
             }
             Button {
                 Task {
