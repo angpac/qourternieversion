@@ -1,4 +1,24 @@
+import type { Metadata } from "next";
 import JoinForm from "@/components/JoinForm";
+
+// Smart App Banner. It covers the case the App Clip card can't: a link
+// opened inside Safari, where iOS shows this banner rather than the card.
+// A scanned QR goes through the Camera app instead and gets the card
+// directly, driven by the AASA `appclips` claim.
+//
+// `app-clip-display=card` asks Safari for the full App Clip card. The
+// numeric App Store id is required even for a clip-only banner, so the
+// banner is omitted entirely until NEXT_PUBLIC_APP_STORE_ID is set -
+// a banner with a placeholder id would send people to the wrong listing.
+export async function generateMetadata(): Promise<Metadata> {
+  const appStoreId = process.env.NEXT_PUBLIC_APP_STORE_ID;
+  if (!appStoreId) return {};
+  return {
+    other: {
+      "apple-itunes-app": `app-id=${appStoreId}, app-clip-bundle-id=net.criers.Qourt.Clip, app-clip-display=card`,
+    },
+  };
+}
 
 export default async function JoinWithCodePage({
   params,

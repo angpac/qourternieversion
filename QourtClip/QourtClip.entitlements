@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Binds this clip to the full app, so iOS knows the two are one
+	     product and can offer the upgrade to the App Store version. -->
+	<key>com.apple.developer.parent-application-identifiers</key>
+	<array>
+		<string>$(AppIdentifierPrefix)net.criers.Qourt</string>
+	</array>
+	<!-- `appclips:` (not `applinks:`) is what lets qourt-web.vercel.app
+	     invoke this clip. The full app claims the same domain with
+	     `applinks:`, and iOS prefers the installed app when both apply. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>appclips:qourt-web.vercel.app</string>
+	</array>
+</dict>
+</plist>

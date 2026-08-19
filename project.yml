@@ -38,6 +38,9 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         CODE_SIGN_ENTITLEMENTS: Qourt/Qourt.entitlements
     dependencies:
+      - target: QourtClip
+        embed: true
+        codeSign: true
       - target: "Qourt Watch App"
         embed: true
         codeSign: true
@@ -61,6 +64,36 @@ targets:
         INFOPLIST_FILE: QourtWidgetExtension/Info.plist
         SKIP_INSTALL: YES
         TARGETED_DEVICE_FAMILY: "1,2"
+
+  QourtClip:
+    # App Clip: what an iPhone without Qourt installed gets when it scans a
+    # game's QR code. Mirrors the web guest client rather than the full app
+    # - join by code, then watch your place in the line.
+    #
+    # No Supabase package here on purpose. App Clips have a hard
+    # uncompressed size budget, the guest flow is anon-key only, and the web
+    # client already polls instead of using Realtime, so ClipAPI does the
+    # few RPC calls over URLSession. Nothing from QourtShared either: the
+    # clip needs no auth, no Live Activities and no shared keychain.
+    type: application.on-demand-install-capable
+    platform: iOS
+    sources:
+      - path: QourtClip
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: net.criers.Qourt.Clip
+        # PRODUCT_NAME stays QourtClip - naming the product "Qourt" makes it
+        # build to Qourt.app, which collides with the parent app. The name a
+        # guest actually sees comes from CFBundleDisplayName below, and the
+        # App Clip card's title comes from App Store Connect.
+        INFOPLIST_FILE: QourtClip/Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: Qourt
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_ENTITLEMENTS: QourtClip/QourtClip.entitlements
+        SKIP_INSTALL: YES
+        TARGETED_DEVICE_FAMILY: 1
 
   "Qourt Watch App":
     type: application
@@ -110,3 +143,14 @@ schemes:
         "Qourt Watch App": all
     run:
       config: Debug
+  QourtClip:
+    build:
+      targets:
+        QourtClip: all
+    run:
+      config: Debug
+      # Simulates being invoked by a scanned QR code. Change the code to a
+      # real one from a game you've created; without this the clip launches
+      # to a blank join form, which is also a valid state to test.
+      environmentVariables:
+        _XCAppClipURL: https://qourt-web.vercel.app/join/ABC123

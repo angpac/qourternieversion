@@ -269,6 +269,24 @@ Running list of everything to manually verify, updated as features are built. Te
 - [ ] The Live Dashboard's courts grid already uses the extra iPad width automatically (more courts per row) — confirm it looks right with both few and many courts
 - [ ] Nothing regressed on iPhone — My Games still behaves exactly as a single push-navigation stack (this was true before the iPad work and must still be true)
 
+## App Clip (iOS guests without the app)
+Needs the App Store Connect setup in `docs/AppClip_Setup.md` before the QR
+cases work; everything else can be tested from the QourtClip scheme today.
+- [ ] Run the QourtClip scheme with `_XCAppClipURL` set to a real join code — lands on the join form with the code already confirmed, not a blank field
+- [ ] Clear `_XCAppClipURL` — blank join form, code is typeable
+- [ ] Bad/ended code shows the red "This game has ended" row with "Try another code"
+- [ ] Join → status screen matches the web guest client visually (emerald gradient, white card)
+- [ ] Queue position updates within ~2s of the host changing it (polling, same cadence as web)
+- [ ] Skip my turn / I'm ready / Leave game all behave as they do on the web
+- [ ] On court: report score → "Waiting for admin to confirm"
+- [ ] Announcement from the host appears in the banner
+- [ ] Peg Board game: Picker prompt appears at #1, picking 3 starts the match
+- [ ] Reopening the clip returns to the existing session, doesn't join twice under a second name
+- [ ] **Routing, on a real device:** iPhone *with* Qourt installed scans the QR → opens the app, not the clip
+- [ ] **Routing:** iPhone *without* Qourt scans the QR → App Clip card appears
+- [ ] **Routing:** Android scans the same QR → web guest client, unchanged
+- [ ] Clip's uncompressed size stays under 15 MB (Xcode → Organizer → App Thinning report)
+
 ## Cross-cutting
 - [ ] Same game, one browser tab as "player" + iPhone as "admin" simultaneously — confirms realtime end-to-end
 - [ ] Apple Watch: shows queue position or court+score, matches phone's signed-in account (no separate sign-in)
