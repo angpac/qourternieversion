@@ -75,8 +75,11 @@ struct CourtDetailSheet: View {
                         Spacer()
                     }
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.top, 20)
+                .padding(.bottom, 12)
 
+                ScrollView {
                 VStack(spacing: 24) {
                     if hasNoPlayers {
                         VStack(spacing: 12) {
@@ -178,6 +181,7 @@ struct CourtDetailSheet: View {
                     }
                 }
                 .padding()
+                }
             }
             .background(Color.appBackground.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
