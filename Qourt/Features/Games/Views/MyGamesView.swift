@@ -713,8 +713,7 @@ struct MyGamesView: View {
 }
 
 #Preview {
-    
-    var vm = AuthViewModel()
+    let vm = AuthViewModel()
     vm.role = .admin
 
      return MyGamesView(auth: vm).environment(DeepLinkRouter())

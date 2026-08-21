@@ -22,6 +22,7 @@ struct ScoreboardView: View {
     var viewModel: LiveDashboardViewModel
 
     @Environment(\.dismiss) private var dismiss
+    @State private var focusedCourt: Court?
 
     private let labelColor = Color.appSecondaryText
 
@@ -38,7 +39,12 @@ struct ScoreboardView: View {
                         spacing: 20 * scale
                     ) {
                         ForEach(viewModel.courts) { court in
-                            ScoreboardCourtCard(court: court, match: viewModel.activeMatches[court.id], scale: scale)
+                            Button {
+                                focusedCourt = court
+                            } label: {
+                                ScoreboardCourtCard(court: court, match: viewModel.activeMatches[court.id], scale: scale)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding(.horizontal, 32 * scale)
@@ -55,6 +61,9 @@ struct ScoreboardView: View {
         .background(Color.appBackground.ignoresSafeArea())
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
+        .fullScreenCover(item: $focusedCourt) { court in
+            MatchScoreboardView(viewModel: viewModel, court: court)
+        }
     }
 
     /// A ratio of the shorter device dimension against the 11" iPad
@@ -265,22 +274,30 @@ private func previewViewModel() -> LiveDashboardViewModel {
     return vm
 }
 
-#Preview("iPad Pro 13-inch") {
+#Preview("iPad Pro 13-inch", traits: .fixedLayout(width: 1366, height: 1024)) {
     ScoreboardView(viewModel: previewViewModel())
-        .previewLayout(.fixed(width: 1366, height: 1024))
 }
 
-#Preview("iPad Pro 11-inch") {
+#Preview("iPad Pro 11-inch", traits: .fixedLayout(width: 1194, height: 834)) {
     ScoreboardView(viewModel: previewViewModel())
-        .previewLayout(.fixed(width: 1194, height: 834))
 }
 
-#Preview("iPad Air") {
+#Preview("iPad Air", traits: .fixedLayout(width: 1180, height: 820)) {
     ScoreboardView(viewModel: previewViewModel())
-        .previewLayout(.fixed(width: 1180, height: 820))
 }
 
-#Preview("iPad mini") {
+#Preview("iPad mini — Landscape", traits: .fixedLayout(width: 1133, height: 744)) {
     ScoreboardView(viewModel: previewViewModel())
-        .previewLayout(.fixed(width: 1133, height: 744))
+}
+
+#Preview("iPad mini — Portrait", traits: .fixedLayout(width: 744, height: 1133)) {
+    ScoreboardView(viewModel: previewViewModel())
+}
+
+#Preview("iPhone — Portrait", traits: .fixedLayout(width: 430, height: 932)) {
+    ScoreboardView(viewModel: previewViewModel())
+}
+
+#Preview("iPhone — Landscape", traits: .fixedLayout(width: 932, height: 430)) {
+    ScoreboardView(viewModel: previewViewModel())
 }

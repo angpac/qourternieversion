@@ -357,17 +357,26 @@ private func previewViewModel() -> BracketViewModel {
     return vm
 }
 
-#Preview("iPad Pro 13-inch") {
+#Preview("iPad Pro 13-inch", traits: .fixedLayout(width: 1366, height: 1024)) {
     TournamentScoreboardView(viewModel: previewViewModel())
-        .previewLayout(.fixed(width: 1366, height: 1024))
 }
 
-#Preview("iPad Pro 11-inch") {
+#Preview("iPad Pro 11-inch", traits: .fixedLayout(width: 1194, height: 834)) {
     TournamentScoreboardView(viewModel: previewViewModel())
-        .previewLayout(.fixed(width: 1194, height: 834))
 }
 
-#Preview("iPad mini") {
+#Preview("iPad mini — Landscape", traits: .fixedLayout(width: 1133, height: 744)) {
     TournamentScoreboardView(viewModel: previewViewModel())
-        .previewLayout(.fixed(width: 1133, height: 744))
+}
+
+#Preview("iPad mini — Portrait", traits: .fixedLayout(width: 744, height: 1133)) {
+    TournamentScoreboardView(viewModel: previewViewModel())
+}
+
+#Preview("iPhone — Portrait", traits: .fixedLayout(width: 430, height: 932)) {
+    TournamentScoreboardView(viewModel: previewViewModel())
+}
+
+#Preview("iPhone — Landscape", traits: .fixedLayout(width: 932, height: 430)) {
+    TournamentScoreboardView(viewModel: previewViewModel())
 }

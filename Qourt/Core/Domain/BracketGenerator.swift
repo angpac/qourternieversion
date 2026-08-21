@@ -69,6 +69,52 @@ enum BracketGenerator {
         }
     }
 
+    /// Combines two bracket slots into one. When both sides have someone —
+    /// either already decided (a seeded player) or still to-be-determined
+    /// (a producer, i.e. "the winner/loser of an earlier match") — this
+    /// creates the match connecting them. When only one side has someone,
+    /// that's a bye: the lone side passes straight through untouched
+    /// instead of becoming a match nobody can ever start.
+    ///
+    /// This has to treat "decided" and "producer" identically as "someone
+    /// is here" — a losers-bracket slot fed by a real match (a producer,
+    /// not decided until that match concludes) is just as much "someone"
+    /// as an already-seeded player. Handling only the decided case (as an
+    /// earlier version of this did) let a winners-bracket bye's empty
+    /// "loser" slot get paired against a real producer slot in the losers
+    /// bracket, creating a match whose other team could never be filled
+    /// in — and everything downstream of it stayed stuck at "TBD" forever.
+    /// Returns the winner-advancing slot; `loser` is set only when a real
+    /// match was created (nil for a bye, since nobody lost).
+    private static func pair(
+        _ left: Slot,
+        _ right: Slot,
+        round: Int,
+        slot: Int,
+        bracket: String,
+        matches: inout [GeneratedMatch]
+    ) -> (winner: Slot, loser: Slot?) {
+        if left.isEmpty && right.isEmpty {
+            return (Slot(), nil)
+        }
+        if left.isEmpty {
+            return (right, nil)
+        }
+        if right.isEmpty {
+            return (left, nil)
+        }
+
+        let newMatch = GeneratedMatch(
+            round: round, slot: slot, bracket: bracket,
+            teamA: left.decided.map { [$0] }, teamB: right.decided.map { [$0] }
+        )
+        let idx = matches.count
+        matches.append(newMatch)
+        wire(left, toMatchId: newMatch.id, side: "a", matches: &matches)
+        wire(right, toMatchId: newMatch.id, side: "b", matches: &matches)
+        return (Slot(producerMatchIndex: idx), Slot(producerMatchIndex: idx, producerIsLoser: true))
+    }
+
     /// Builds the winners bracket. Returns the per-round loser slots
     /// (one array per WB round) so double-elimination can route them into
     /// the losers bracket; single-elimination just ignores that return.
@@ -89,30 +135,9 @@ enum BracketGenerator {
             var nextSlots: [Slot] = []
             var losers: [Slot] = []
             for i in stride(from: 0, to: slots.count, by: 2) {
-                let left = slots[i]
-                let right = slots[i + 1]
-
-                if let x = left.decided, right.isEmpty {
-                    nextSlots.append(Slot(decided: x))
-                    losers.append(Slot())
-                } else if let y = right.decided, left.isEmpty {
-                    nextSlots.append(Slot(decided: y))
-                    losers.append(Slot())
-                } else if left.isEmpty && right.isEmpty {
-                    nextSlots.append(Slot())
-                    losers.append(Slot())
-                } else {
-                    let newMatch = GeneratedMatch(
-                        round: round, slot: i / 2, bracket: "winners",
-                        teamA: left.decided.map { [$0] }, teamB: right.decided.map { [$0] }
-                    )
-                    let idx = matches.count
-                    matches.append(newMatch)
-                    wire(left, toMatchId: newMatch.id, side: "a", matches: &matches)
-                    wire(right, toMatchId: newMatch.id, side: "b", matches: &matches)
-                    nextSlots.append(Slot(producerMatchIndex: idx))
-                    losers.append(Slot(producerMatchIndex: idx, producerIsLoser: true))
-                }
+                let (winner, loser) = pair(slots[i], slots[i + 1], round: round, slot: i / 2, bracket: "winners", matches: &matches)
+                nextSlots.append(winner)
+                losers.append(loser ?? Slot())
             }
             loserSlotsByRound.append(losers)
             slots = nextSlots
@@ -156,17 +181,8 @@ enum BracketGenerator {
             if currentLB.count > 1 {
                 afterLosersRound = []
                 for i in stride(from: 0, to: currentLB.count, by: 2) {
-                    let left = currentLB[i]
-                    let right = currentLB[i + 1]
-                    let newMatch = GeneratedMatch(
-                        round: lbRound, slot: i / 2, bracket: "losers",
-                        teamA: left.decided.map { [$0] }, teamB: right.decided.map { [$0] }
-                    )
-                    let idx = matches.count
-                    matches.append(newMatch)
-                    wire(left, toMatchId: newMatch.id, side: "a", matches: &matches)
-                    wire(right, toMatchId: newMatch.id, side: "b", matches: &matches)
-                    afterLosersRound.append(Slot(producerMatchIndex: idx))
+                    let (winner, _) = pair(currentLB[i], currentLB[i + 1], round: lbRound, slot: i / 2, bracket: "losers", matches: &matches)
+                    afterLosersRound.append(winner)
                 }
                 lbRound += 1
             }
@@ -174,17 +190,8 @@ enum BracketGenerator {
             let wbLosersThisDrop = wbLoserSlotsByRound[k]
             var afterDropdown: [Slot] = []
             for i in 0..<afterLosersRound.count {
-                let left = afterLosersRound[i]
-                let right = wbLosersThisDrop[i]
-                let newMatch = GeneratedMatch(
-                    round: lbRound, slot: i, bracket: "losers",
-                    teamA: left.decided.map { [$0] }, teamB: right.decided.map { [$0] }
-                )
-                let idx = matches.count
-                matches.append(newMatch)
-                wire(left, toMatchId: newMatch.id, side: "a", matches: &matches)
-                wire(right, toMatchId: newMatch.id, side: "b", matches: &matches)
-                afterDropdown.append(Slot(producerMatchIndex: idx))
+                let (winner, _) = pair(afterLosersRound[i], wbLosersThisDrop[i], round: lbRound, slot: i, bracket: "losers", matches: &matches)
+                afterDropdown.append(winner)
             }
             lbRound += 1
             currentLB = afterDropdown
