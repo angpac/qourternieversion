@@ -28,6 +28,7 @@ struct MyGamesView: View {
     @State private var isRedeemingAdminInvite = false
     @State private var adminInviteCode = ""
     @State private var adminInviteError: String?
+    @State private var isScanningAdminInvite = false
     @State private var createGameViewModel = CreateGameViewModel()
     @State private var showArchived = false
     /// Set by the swipe action; the confirmation dialog reads it. Deleting a
@@ -39,6 +40,19 @@ struct MyGamesView: View {
     @State private var pendingCreateAfterTemplate = false
     @State private var realtimeChannel: RealtimeChannelV2?
     @State private var realtimeSubscription: RealtimeSubscription?
+
+    /// `previewGames` is Canvas-only: `loadGames()` guards on
+    /// `auth.userID`, which is nil for a fresh, unauthenticated
+    /// `AuthViewModel()` in a preview, so it returns before ever
+    /// overwriting `games` — this seeds the list to skip the empty state
+    /// without needing a real signed-in session.
+    init(auth: AuthViewModel, previewGames: [Game]? = nil) {
+        self.auth = auth
+        if let previewGames {
+            _games = State(initialValue: previewGames)
+            _isLoading = State(initialValue: false)
+        }
+    }
 
     private var ongoingGames: [Game] { games.filter { !$0.hasEnded && !$0.archived } }
     private var endedGames: [Game] { games.filter { $0.hasEnded && !$0.archived } }
@@ -474,46 +488,6 @@ struct MyGamesView: View {
             let labelColor = Color.appSecondaryText
             NavigationStack {
                 VStack(spacing: 0) {
-                    HStack {
-                        Button {
-                            isRedeemingAdminInvite = false
-                        } label: {
-                            Text("Cancel")
-                                .foregroundStyle(Color.primary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color(.systemGray5), in: Capsule())
-                                .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-
-                        Spacer()
-
-                        Text("Join as co-admin")
-                            .font(.headline)
-
-                        Spacer()
-
-                        Button {
-                            Task { await redeemAdminInvite() }
-                        } label: {
-                            Text("Join")
-                                .foregroundStyle(adminInviteCode.trimmingCharacters(in: .whitespaces).isEmpty ? .black : .white)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(
-                                    adminInviteCode.trimmingCharacters(in: .whitespaces).isEmpty
-                                        ? Color(.systemGray5)
-                                        : Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255),
-                                    in: Capsule()
-                                )
-                                .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(adminInviteCode.trimmingCharacters(in: .whitespaces).isEmpty)
-                    }
-                    .padding()
-
                     VStack(alignment: .leading, spacing: 24) {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Invite Code")
@@ -527,7 +501,20 @@ struct MyGamesView: View {
                                 .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
                         }
 
-                        Text("Ask the game's owner for their co-admin invite code (not the player join code).")
+                        Button {
+                            isScanningAdminInvite = true
+                        } label: {
+                            Label("Scan QR code", systemImage: "qrcode.viewfinder")
+                                .font(.custom("DIN-Medium", size: 16))
+                                .frame(maxWidth: .infinity)
+                                .foregroundStyle(Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255))
+                                .padding()
+                                .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
+                                .contentShape(RoundedRectangle(cornerRadius: 16))
+                        }
+                        .buttonStyle(.plain)
+
+                        Text("Ask the game's owner for their co-admin invite code (not the player join code), or scan the QR code on their Co-admins screen.")
                             .font(.subheadline)
                             .foregroundStyle(labelColor)
 
@@ -541,9 +528,28 @@ struct MyGamesView: View {
                     .padding()
                 }
                 .background(Color.appBackground.ignoresSafeArea())
-                .toolbar(.hidden, for: .navigationBar)
+                .navigationTitle("Join as co-admin")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { isRedeemingAdminInvite = false }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Join") {
+                            Task { await redeemAdminInvite() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255))
+                        .disabled(adminInviteCode.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                }
             }
             .presentationBackground(Color.appBackground)
+        }
+        .sheet(isPresented: $isScanningAdminInvite) {
+            QRScannerSheet { code in
+                adminInviteCode = code
+            }
         }
     }
 
@@ -797,10 +803,55 @@ struct MyGamesView: View {
     }
 }
 
-#Preview {
+#Preview("With existing games") {
     let vm = AuthViewModel()
     vm.role = .admin
 
-     return MyGamesView(auth: vm).environment(DeepLinkRouter())
-    //MyGamesView(auth: AuthViewModel())
+    let sampleGames: [Game] = [
+        Game(
+            id: UUID(),
+            name: "Sunday Open Play",
+            location: "Community Center",
+            startsAt: Date(),
+            numCourts: 4,
+            isDoubles: true,
+            format: .kingOfTheCourt,
+            formatSettings: [:],
+            joinCode: "7K2P9Q",
+            status: "live"
+        ),
+        Game(
+            id: UUID(),
+            name: "Wednesday Peg Board",
+            location: "Downtown Sports Hall",
+            startsAt: Date().addingTimeInterval(3600 * 24),
+            numCourts: 3,
+            isDoubles: true,
+            format: .pegBoard,
+            formatSettings: [:],
+            joinCode: "PB44ZZ",
+            status: "draft"
+        ),
+        Game(
+            id: UUID(),
+            name: "Friday Night Tournament",
+            location: "Westside Courts",
+            startsAt: Date().addingTimeInterval(-3600 * 24 * 3),
+            numCourts: 8,
+            isDoubles: true,
+            format: .tournamentSingleElim,
+            formatSettings: [:],
+            joinCode: "TRNY01",
+            status: "ended"
+        )
+    ]
+
+    return MyGamesView(auth: vm, previewGames: sampleGames).environment(DeepLinkRouter())
+}
+
+#Preview("Empty") {
+    let vm = AuthViewModel()
+    vm.role = .admin
+
+    return MyGamesView(auth: vm).environment(DeepLinkRouter())
 }

@@ -3,6 +3,7 @@
 //  Qourt
 //
 
+import CoreImage.CIFilterBuiltins
 import SwiftUI
 
 struct ManageCoAdminsView: View {
@@ -27,6 +28,27 @@ struct ManageCoAdminsView: View {
                         .frame(maxWidth: .infinity)
 
                     if let code = viewModel.game.adminInviteCode {
+                        // Encodes the bare code, not a URL — unlike the player
+                        // join QR, there's no web/App Clip route for co-admin
+                        // invites, this only ever gets scanned by another
+                        // signed-in admin already inside the app. The scanner
+                        // already falls back to treating non-URL text as the
+                        // code itself, so this round-trips through the same
+                        // QRScannerSheet used for player joins.
+                        if let qrImage = QRCodeGenerator.image(for: code) {
+                            // White, not appSurface: the card behind this is
+                            // already appSurface-colored, so a same-toned box
+                            // here would have no visible edge. White also
+                            // keeps the black-on-white contrast a scanner
+                            // needs regardless of light/dark mode.
+                            Image(uiImage: qrImage)
+                                .interpolation(.none)
+                                .resizable()
+                                .frame(width: 180, height: 180)
+                                .padding()
+                                .background(.white, in: RoundedRectangle(cornerRadius: 16))
+                        }
+
                         ShareLink(item: "Join me as a co-admin on Qourt for \"\(viewModel.game.name)\". Enter this code in the app: \(code)") {
                             Label("Share invite code", systemImage: "square.and.arrow.up")
                                 .font(.custom("DIN-Medium", size: 16))

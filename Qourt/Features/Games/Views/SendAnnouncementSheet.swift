@@ -26,52 +26,6 @@ struct SendAnnouncementSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ZStack {
-                    Text("Send announcement")
-                        .font(.custom("DIN-Medium", size: 17))
-                        .foregroundStyle(Color.primary)
-                        .frame(maxWidth: .infinity)
-
-                    HStack {
-                        Button {
-                            dismiss()
-                        } label: {
-                            Text("Cancel")
-                                .font(.custom("DIN-Medium", size: 15))
-                                .foregroundStyle(Color.primary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color(.systemGray5), in: Capsule())
-                                .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-
-                        Spacer()
-
-                        Button {
-                            Task { await send() }
-                        } label: {
-                            Group {
-                                if isSending {
-                                    ProgressView()
-                                        .tint(.white)
-                                } else {
-                                    Text("Send")
-                                        .font(.custom("DIN-Medium", size: 15))
-                                        .foregroundStyle(.white)
-                                }
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(isMessageEmpty ? Color(.systemGray5) : accentColor, in: Capsule())
-                            .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(isMessageEmpty || isSending)
-                    }
-                }
-                .padding()
-
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         VStack(alignment: .leading, spacing: 8) {
@@ -122,8 +76,27 @@ struct SendAnnouncementSheet: View {
                 }
             }
             .background(Color.appBackground.ignoresSafeArea())
+            .navigationTitle("Send announcement")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        Task { await send() }
+                    } label: {
+                        if isSending {
+                            ProgressView()
+                        } else {
+                            Text("Send")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(accentColor)
+                    .disabled(isMessageEmpty || isSending)
+                }
+            }
         }
     }
 

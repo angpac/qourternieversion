@@ -19,27 +19,6 @@ struct InvitePlayersView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Invite Players")
-                    .font(.custom("DIN-Regular", size: 28))
-                    .fontWeight(.bold)
-
-                Spacer()
-
-                Button {
-                    onFinished()
-                } label: {
-                    Text("Done")
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .foregroundStyle(.white)
-                        .background(accentColor, in: Capsule())
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-            }
-            .padding()
-
             ScrollView {
                 VStack(spacing: 24) {
                     VStack(spacing: 4) {
@@ -86,8 +65,16 @@ struct InvitePlayersView: View {
             }
         }
         .background(Color.appBackground.ignoresSafeArea())
+        .navigationTitle("Invite Players")
+        .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done") { onFinished() }
+                    .buttonStyle(.borderedProminent)
+                    .tint(accentColor)
+            }
+        }
     }
 }
 

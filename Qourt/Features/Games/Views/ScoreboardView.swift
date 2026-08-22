@@ -83,7 +83,7 @@ struct ScoreboardView: View {
                 dismiss()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 17 * scale, weight: .semibold))
+                    .font(.system(size: 20 * scale, weight: .semibold))
                     .foregroundStyle(Color.primary)
                     .frame(width: 44 * scale, height: 44 * scale)
                     .background(Color(.systemGray5), in: Circle())

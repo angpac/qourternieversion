@@ -29,57 +29,6 @@ struct AddWalkInSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ZStack {
-                    Text("Add players")
-                        .font(.custom("DIN-Medium", size: 17))
-                        .foregroundStyle(Color.primary)
-                        .frame(maxWidth: .infinity)
-
-                    HStack {
-                        Button {
-                            dismiss()
-                        } label: {
-                            Text("Cancel")
-                                .font(.custom("DIN-Medium", size: 15))
-                                .foregroundStyle(Color.primary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color(.systemGray5), in: Capsule())
-                                .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-
-                        Spacer()
-
-                        Button {
-                            Task {
-                                isSaving = true
-                                await viewModel.addWalkIns(entries.map { (name: $0.name, skillLevel: $0.skillLevel) })
-                                isSaving = false
-                                dismiss()
-                            }
-                        } label: {
-                            Group {
-                                if isSaving {
-                                    ProgressView()
-                                        .tint(.white)
-                                } else {
-                                    Text("Save")
-                                        .font(.custom("DIN-Medium", size: 15))
-                                        .foregroundStyle(.white)
-                                }
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(hasAnyName ? accentColor : Color(.systemGray5), in: Capsule())
-                            .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(!hasAnyName || isSaving)
-                    }
-                }
-                .padding()
-
                 ScrollView {
                     VStack(spacing: 12) {
                         ForEach(entries.indices, id: \.self) { index in
@@ -111,8 +60,32 @@ struct AddWalkInSheet: View {
                 }
             }
             .background(Color.appBackground.ignoresSafeArea())
+            .navigationTitle("Add players")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        Task {
+                            isSaving = true
+                            await viewModel.addWalkIns(entries.map { (name: $0.name, skillLevel: $0.skillLevel) })
+                            isSaving = false
+                            dismiss()
+                        }
+                    } label: {
+                        if isSaving {
+                            ProgressView()
+                        } else {
+                            Text("Save")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(accentColor)
+                    .disabled(!hasAnyName || isSaving)
+                }
+            }
         }
     }
 }
