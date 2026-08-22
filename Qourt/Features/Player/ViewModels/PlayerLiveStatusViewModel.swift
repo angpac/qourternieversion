@@ -6,11 +6,15 @@
 import Foundation
 import Supabase
 
-struct LastMatchResult {
+struct PlayerMatchScore: Identifiable {
+    let id: UUID
     let scoreA: Int
     let scoreB: Int
     let myTeam: String
+    let opponentNames: String
     var won: Bool { myTeam == "a" ? scoreA > scoreB : scoreB > scoreA }
+    var myScore: Int { myTeam == "a" ? scoreA : scoreB }
+    var opponentScore: Int { myTeam == "a" ? scoreB : scoreA }
 }
 
 @Observable
@@ -22,7 +26,7 @@ final class PlayerLiveStatusViewModel {
     var queuedPlayers: [GamePlayer] = []
     var myCourt: Court?
     var currentMatch: MatchWithPlayers?
-    var lastMatchResult: LastMatchResult?
+    var myMatches: [PlayerMatchScore] = []
     var announcements: [Announcement] = []
     var prepEndsAt: Date?
     var errorMessage: String?
@@ -123,7 +127,13 @@ final class PlayerLiveStatusViewModel {
 
     @MainActor
     func loadAll() async {
-        isLoading = true
+        // Only the very first load should hide the screen behind a
+        // spinner — `isLoading` already starts `true` for that. Every
+        // later call (a realtime update on a score, a pull-to-refresh,
+        // etc.) reuses the screen that's already showing and just updates
+        // the data in place; re-flipping isLoading here made every one of
+        // those reloads blank the whole screen out and back in, not just
+        // the score that actually changed.
         defer { isLoading = false }
 
         guard let userID = (try? await supabase.auth.session)?.user.id else { return }
@@ -168,7 +178,7 @@ final class PlayerLiveStatusViewModel {
                 currentMatch = nil
             }
 
-            await loadLastMatchResult(for: player)
+            await loadMyMatches(for: player)
             await loadAnnouncements(for: player)
             if game.format == .kingOfTheCourt {
                 await loadPrepEndsAt()
@@ -253,32 +263,59 @@ final class PlayerLiveStatusViewModel {
             .value) ?? []
     }
 
+    /// Every confirmed match this player has played in this game, most
+    /// recent first — queried from `matches` directly (not `match_players`)
+    /// so `started_at` is a plain column on the table being ordered, same
+    /// fix as elsewhere: ordering by an *embedded* table's column returned
+    /// rows in an unreliable order.
     @MainActor
-    private func loadLastMatchResult(for player: GamePlayer) async {
-        struct LastMatchRow: Decodable {
-            let team: String
-            let matches: MatchScoreOnly
-        }
-        struct MatchScoreOnly: Decodable {
+    private func loadMyMatches(for player: GamePlayer) async {
+        struct TeamOnly: Decodable { let team: String }
+        struct MyMatchQueryRow: Decodable {
+            let id: UUID
             let score_a: Int?
             let score_b: Int?
-            let status: MatchStatus
+            let match_players: [TeamOnly]
         }
 
-        let rows: [LastMatchRow] = (try? await supabase.from("match_players")
-            .select("team, matches!inner(score_a, score_b, status)")
-            .eq("game_player_id", value: player.id)
-            .eq("matches.status", value: MatchStatus.confirmed.rawValue)
-            .order("started_at", ascending: false, referencedTable: "matches")
-            .limit(1)
+        let matches: [MyMatchQueryRow] = (try? await supabase.from("matches")
+            .select("id, score_a, score_b, match_players!inner(team)")
+            .eq("match_players.game_player_id", value: player.id)
+            .eq("status", value: MatchStatus.confirmed.rawValue)
+            .order("started_at", ascending: false)
             .execute()
             .value) ?? []
 
-        guard let row = rows.first, let scoreA = row.matches.score_a, let scoreB = row.matches.score_b else {
-            lastMatchResult = nil
+        guard !matches.isEmpty else {
+            myMatches = []
             return
         }
-        lastMatchResult = LastMatchResult(scoreA: scoreA, scoreB: scoreB, myTeam: row.team)
+
+        struct NameOnly: Decodable {
+            let id: UUID
+            let display_name: String
+        }
+        struct AllPlayersRow: Decodable {
+            let match_id: UUID
+            let team: String
+            let game_players: NameOnly
+        }
+        let allRows: [AllPlayersRow] = (try? await supabase.from("match_players")
+            .select("match_id, team, game_players(id, display_name)")
+            .in("match_id", values: matches.map(\.id))
+            .execute()
+            .value) ?? []
+
+        myMatches = matches.compactMap { match in
+            guard let scoreA = match.score_a, let scoreB = match.score_b,
+                  let myTeam = match.match_players.first?.team else { return nil }
+            let opponentTeam = myTeam == "a" ? "b" : "a"
+            let opponentNames = allRows
+                .filter { $0.match_id == match.id && $0.team == opponentTeam }
+                .map(\.game_players.display_name)
+                .joined(separator: " & ")
+            return PlayerMatchScore(id: match.id, scoreA: scoreA, scoreB: scoreB, myTeam: myTeam, opponentNames: opponentNames)
+        }
     }
 
     @MainActor
@@ -378,13 +415,21 @@ final class PlayerLiveStatusViewModel {
         }
 
         do {
-            let myRows: [MatchPlayerRow] = try await supabase.from("match_players")
-                .select("match_id, team, game_players(*)")
+            // A player accumulates one match_players row per match they've
+            // ever played in this game — filtering to only the still-active
+            // one server-side (rather than fetching every historical row
+            // and grabbing `.first`) is what makes this find the *current*
+            // match instead of whichever one happened to sort first, which
+            // was almost always the first match they ever played here.
+            struct MyActiveMatchRow: Decodable { let match_id: UUID }
+            let myActiveRows: [MyActiveMatchRow] = try await supabase.from("match_players")
+                .select("match_id, matches!inner(status)")
                 .eq("game_player_id", value: player.id)
+                .in("matches.status", values: [MatchStatus.inProgress.rawValue, MatchStatus.awaitingConfirmation.rawValue])
                 .execute()
                 .value
 
-            guard let myMatchId = myRows.first?.match_id else {
+            guard let myMatchId = myActiveRows.first?.match_id else {
                 currentMatch = nil
                 myCourt = nil
                 return
@@ -396,12 +441,6 @@ final class PlayerLiveStatusViewModel {
                 .single()
                 .execute()
                 .value
-
-            guard match.status == .inProgress || match.status == .awaitingConfirmation else {
-                currentMatch = nil
-                myCourt = nil
-                return
-            }
 
             let rows: [MatchPlayerRow] = try await supabase.from("match_players")
                 .select("match_id, team, game_players(*)")

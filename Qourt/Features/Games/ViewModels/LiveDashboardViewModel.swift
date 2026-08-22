@@ -14,6 +14,7 @@ final class LiveDashboardViewModel {
     var queue: [GamePlayer] = []
     var fullRoster: [GamePlayer] = []
     var activeMatches: [UUID: MatchWithPlayers] = [:] // keyed by court id
+    var gamesPlayedCount: [UUID: Int] = [:] // keyed by game_player id
     var errorMessage: String?
     var isLoading = true
     var gameStatus: String
@@ -262,10 +263,20 @@ final class LiveDashboardViewModel {
                 .execute()
                 .value
 
-            let (fetchedCourts, fetchedQueue, fetchedRoster) = try await (courtsFetch, queueFetch, rosterFetch)
+            struct GamesPlayedRow: Decodable { let game_player_id: UUID }
+            async let gamesPlayedFetch: [GamesPlayedRow] = supabase.from("match_players")
+                .select("game_player_id, matches!inner(id)")
+                .eq("matches.game_id", value: game.id)
+                .eq("matches.status", value: MatchStatus.confirmed.rawValue)
+                .execute()
+                .value
+
+            let (fetchedCourts, fetchedQueue, fetchedRoster, fetchedGamesPlayed) =
+                try await (courtsFetch, queueFetch, rosterFetch, gamesPlayedFetch)
             courts = fetchedCourts
             queue = fetchedQueue
             fullRoster = fetchedRoster
+            gamesPlayedCount = Dictionary(fetchedGamesPlayed.map { ($0.game_player_id, 1) }, uniquingKeysWith: +)
 
             await loadActiveMatches()
             if isKingOfTheCourt {

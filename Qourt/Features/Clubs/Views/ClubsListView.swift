@@ -14,6 +14,7 @@ struct ClubsListView: View {
     @State private var isRedeemingInvite = false
     @State private var inviteCode = ""
     @State private var inviteError: String?
+    @State private var selectedClub: Club?
 
     private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
 
@@ -31,17 +32,28 @@ struct ClubsListView: View {
                 emptyState
             } else {
                 List(viewModel.clubs) { club in
-                    NavigationLink(value: club) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(club.name)
-                                .font(.custom("DIN-Medium", size: 17))
-                            if !club.sports.isEmpty {
-                                Text(club.sports.joined(separator: ", "))
-                                    .font(.custom("DIN-Regular", size: 13))
-                                    .foregroundStyle(.secondary)
+                    Button {
+                        selectedClub = club
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(club.name)
+                                    .font(.custom("DIN-Medium", size: 17))
+                                    .foregroundStyle(Color.primary)
+                                if !club.sports.isEmpty {
+                                    Text(club.sports.joined(separator: ", "))
+                                        .font(.custom("DIN-Regular", size: 13))
+                                        .foregroundStyle(.secondary)
+                                }
                             }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
                         }
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                     .listRowBackground(Color.clear)
                 }
                 .scrollContentBackground(.hidden)
@@ -50,8 +62,15 @@ struct ClubsListView: View {
         .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("Clubs")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(for: Club.self) { club in
-            ManageClubAdminsView(club: club)
+        .sheet(item: $selectedClub) { club in
+            NavigationStack {
+                ManageClubAdminsView(club: club)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close") { selectedClub = nil }
+                        }
+                    }
+            }
         }
         .overlay(alignment: .bottomTrailing) {
             Menu {
@@ -142,7 +161,18 @@ struct ClubsListView: View {
                 .toolbar(.hidden, for: .navigationBar)
             }
         }
-        .task { await viewModel.load() }
+        .task {
+            // `.task` re-fires any time this view re-appears — including
+            // when a pushed destination (e.g. a club's admin screen) pops
+            // back to it. Reloading unconditionally raced that: a slow
+            // fetch completing while a club was open reassigned `clubs`
+            // out from under the pushed NavigationLink value, popping the
+            // detail screen back to this list on its own. Only the very
+            // first load (or an explicit refresh after creating a club)
+            // needs to hit the network.
+            guard viewModel.clubs.isEmpty else { return }
+            await viewModel.load()
+        }
     }
 
     private var emptyState: some View {

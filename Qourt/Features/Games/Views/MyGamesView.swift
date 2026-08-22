@@ -12,6 +12,10 @@ struct MyGamesView: View {
     @Environment(DeepLinkRouter.self) private var deepLinkRouter
     @State private var selectedGame: Game?
     @State private var games: [Game] = []
+    /// Player-only: this profile's own `game_players.status` per game, so
+    /// a game they've left can be sorted into Ended regardless of its
+    /// date. Empty/unused for admins.
+    @State private var myPlayerStatusByGameID: [UUID: PlayerStatus] = [:]
     /// Starts true so the very first render shows the spinner rather than
     /// the "No games yet" empty state. With `games` empty and this false,
     /// the empty state won a frame before `.task` could start loading —
@@ -39,6 +43,45 @@ struct MyGamesView: View {
     private var ongoingGames: [Game] { games.filter { !$0.hasEnded && !$0.archived } }
     private var endedGames: [Game] { games.filter { $0.hasEnded && !$0.archived } }
     private var archivedGames: [Game] { games.filter { $0.archived } }
+
+    /// A player's list is grouped by calendar day rather than by admin-set
+    /// status or exact timestamp — a session scheduled for today counts as
+    /// Ongoing no matter what time it started, since comparing full
+    /// timestamps put an already-started-but-still-running today's game
+    /// under Ended the moment its start time passed. Only a date strictly
+    /// before today moves there.
+    ///
+    /// A game the player has left is always Ended regardless of its date —
+    /// once they've stepped away there's nothing "ongoing" or "upcoming"
+    /// about it from their side, even if the admin's session is still
+    /// running or scheduled for later today.
+    private func hasLeftGame(_ game: Game) -> Bool {
+        myPlayerStatusByGameID[game.id] == .removed
+    }
+
+    private var todayGamesForPlayer: [Game] {
+        games
+            .filter { !hasLeftGame($0) && ($0.startsAt.map { Calendar.current.isDateInToday($0) } ?? false) }
+            .sorted { ($0.startsAt ?? .distantFuture) < ($1.startsAt ?? .distantFuture) }
+    }
+    private var upcomingGamesForPlayer: [Game] {
+        games
+            .filter { game in
+                guard !hasLeftGame(game) else { return false }
+                guard let startsAt = game.startsAt else { return true }
+                return !Calendar.current.isDateInToday(startsAt) && startsAt > Date()
+            }
+            .sorted { ($0.startsAt ?? .distantFuture) < ($1.startsAt ?? .distantFuture) }
+    }
+    private var pastGamesForPlayer: [Game] {
+        games
+            .filter { game in
+                if hasLeftGame(game) { return true }
+                guard let startsAt = game.startsAt else { return false }
+                return !Calendar.current.isDateInToday(startsAt) && startsAt < Date()
+            }
+            .sorted { ($0.startsAt ?? .distantPast) > ($1.startsAt ?? .distantPast) }
+    }
 
     var body: some View {
         // NavigationSplitView adapts on its own: two panes side-by-side on
@@ -229,11 +272,49 @@ struct MyGamesView: View {
                 .scrollContentBackground(.hidden)
                 .background(Color.appBackground)
             } else {
-                List(games, selection: $selectedGame) { game in
-                    gameRow(game)
-                        .tag(game)
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
+                List(selection: $selectedGame) {
+                    if !todayGamesForPlayer.isEmpty {
+                        Section {
+                            ForEach(todayGamesForPlayer) { game in
+                                gameRow(game)
+                                    .tag(game)
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                            }
+                        } header: {
+                            Text("Ongoing")
+                                .font(.subheadline)
+                                .foregroundStyle(Color.appSecondaryText)
+                        }
+                    }
+                    if !upcomingGamesForPlayer.isEmpty {
+                        Section {
+                            ForEach(upcomingGamesForPlayer) { game in
+                                gameRow(game)
+                                    .tag(game)
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                            }
+                        } header: {
+                            Text("Upcoming")
+                                .font(.subheadline)
+                                .foregroundStyle(Color.appSecondaryText)
+                        }
+                    }
+                    if !pastGamesForPlayer.isEmpty {
+                        Section {
+                            ForEach(pastGamesForPlayer) { game in
+                                gameRow(game)
+                                    .tag(game)
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                            }
+                        } header: {
+                            Text("Ended")
+                                .font(.subheadline)
+                                .foregroundStyle(Color.appSecondaryText)
+                        }
+                    }
                 }
                 .scrollContentBackground(.hidden)
                 .background(Color.appBackground)
@@ -466,33 +547,33 @@ struct MyGamesView: View {
         }
     }
 
-    /// Matches the exact routing that existed before this was a split
-    /// view: admins get routed to Game Summary once a game has ended;
-    /// players always land on their live status/bracket regardless of
-    /// whether the game has ended, same as before.
+    /// Both roles land on Game Summary once a game has ended — players get
+    /// the same recap admins do, just without the "save as template"
+    /// action (that's an admin-only capability, not something a player's
+    /// view of someone else's game should offer).
     @ViewBuilder
     private func destination(for game: Game) -> some View {
-        if auth.role == .admin {
-            if game.hasEnded {
-                GameSummaryView(game: game)
-            } else {
-                LiveDashboardView(game: game, onGameEnded: {
-                    // Update locally first — the realtime event that would
-                    // otherwise move this into Ended is a separate
-                    // round-trip and can lag behind clearing the
-                    // selection, which would drop the admin back on My
-                    // Games with the game still sitting under Ongoing for
-                    // a beat.
-                    if let index = games.firstIndex(where: { $0.id == game.id }) {
-                        games[index].status = "ended"
-                    }
-                    selectedGame = nil
-                })
-            }
+        if game.hasEnded {
+            GameSummaryView(game: game, isAdmin: auth.role == .admin)
+        } else if auth.role == .admin {
+            LiveDashboardView(game: game, onGameEnded: {
+                // Update locally first — the realtime event that would
+                // otherwise move this into Ended is a separate
+                // round-trip and can lag behind clearing the
+                // selection, which would drop the admin back on My
+                // Games with the game still sitting under Ongoing for
+                // a beat.
+                if let index = games.firstIndex(where: { $0.id == game.id }) {
+                    games[index].status = "ended"
+                }
+                selectedGame = nil
+            })
         } else if game.format.isTournament {
             PlayerBracketView(game: game)
         } else {
-            PlayerLiveStatusView(game: game)
+            PlayerLiveStatusView(game: game, onLeftGame: {
+                myPlayerStatusByGameID[game.id] = .removed
+            })
         }
     }
 
@@ -697,13 +778,17 @@ struct MyGamesView: View {
                         .value
                 }
             } else {
-                struct JoinedGameRow: Decodable { let games: Game }
+                struct JoinedGameRow: Decodable { let status: PlayerStatus; let games: Game }
                 let rows: [JoinedGameRow] = try await supabase.from("game_players")
-                    .select("games(*)")
+                    .select("status, games(*)")
                     .eq("profile_id", value: userID)
                     .execute()
                     .value
                 games = rows.map(\.games)
+                myPlayerStatusByGameID = Dictionary(
+                    rows.map { ($0.games.id, $0.status) },
+                    uniquingKeysWith: { current, _ in current }
+                )
             }
         } catch {
             errorMessage = error.localizedDescription

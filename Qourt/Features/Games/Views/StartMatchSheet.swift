@@ -96,7 +96,7 @@ struct StartMatchSheet: View {
                                         assign(player)
                                     } label: {
                                         HStack {
-                                            Text(player.displayName)
+                                            Text("\(player.displayName) - \(gamesPlayed(for: player)) played")
                                                 .font(.custom("DIN-Regular", size: 17))
                                                 .foregroundStyle(Color.primary)
                                             Spacer()
@@ -131,6 +131,10 @@ struct StartMatchSheet: View {
     private var availablePlayers: [GamePlayer] {
         let assignedIDs = Set((teamA + teamB).map(\.id))
         return viewModel.queue.filter { !assignedIDs.contains($0.id) }
+    }
+
+    private func gamesPlayed(for player: GamePlayer) -> Int {
+        viewModel.gamesPlayedCount[player.id] ?? 0
     }
 
     private func assign(_ player: GamePlayer) {

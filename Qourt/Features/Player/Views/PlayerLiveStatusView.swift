@@ -14,13 +14,20 @@ struct PlayerLiveStatusView: View {
     @State private var isShowingPicker = false
     private let skipsInitialLoad: Bool
 
+    /// Called once `leaveGame()` succeeds so My Games can move this game
+    /// into Ended immediately, rather than waiting on a full reload to
+    /// notice the status change (My Games doesn't subscribe to
+    /// game_players realtime events the way this screen does).
+    var onLeftGame: (() -> Void)?
+
     private let labelColor = Color.appSecondaryText
     private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
     private let destructiveColor = Color(red: 0xFF / 255, green: 0x42 / 255, blue: 0x45 / 255)
 
-    init(game: Game, previewViewModel: PlayerLiveStatusViewModel? = nil) {
+    init(game: Game, previewViewModel: PlayerLiveStatusViewModel? = nil, onLeftGame: (() -> Void)? = nil) {
         _viewModel = State(initialValue: previewViewModel ?? PlayerLiveStatusViewModel(game: game))
         skipsInitialLoad = previewViewModel != nil
+        self.onLeftGame = onLeftGame
     }
 
     var body: some View {
@@ -51,8 +58,8 @@ struct PlayerLiveStatusView: View {
                         announcementBanner(latest)
                     }
 
-                    if let result = viewModel.lastMatchResult {
-                        lastResultBanner(result)
+                    if !viewModel.myMatches.isEmpty {
+                        playerMatchSection
                     }
 
                     switch player.status {
@@ -152,7 +159,10 @@ struct PlayerLiveStatusView: View {
             titleVisibility: .visible
         ) {
             Button("Leave game", role: .destructive) {
-                Task { await viewModel.leaveGame() }
+                Task {
+                    await viewModel.leaveGame()
+                    onLeftGame?()
+                }
             }
         }
     }
@@ -208,21 +218,35 @@ struct PlayerLiveStatusView: View {
         }
     }
 
-    private func lastResultBanner(_ result: LastMatchResult) -> some View {
-        HStack {
-            Image(systemName: result.won ? "trophy.fill" : "figure.badminton")
-                .foregroundStyle(result.won ? .yellow : labelColor)
-            Text(result.won ? "You won your last match" : "You lost your last match")
-                .font(.custom("DIN-Medium", size: 15))
-                .foregroundStyle(Color.primary)
-            Spacer()
-            Text("\(result.scoreA) – \(result.scoreB)")
-                .font(.custom("DIN-Medium", size: 15))
-                .foregroundStyle(Color.primary)
+    private var playerMatchSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Player match")
+                .font(.custom("DIN-Regular", size: 13))
+                .foregroundStyle(labelColor)
+
+            VStack(spacing: 0) {
+                ForEach(viewModel.myMatches) { match in
+                    HStack {
+                        Text(match.opponentNames.isEmpty ? "Match" : "vs \(match.opponentNames)")
+                            .font(.custom("DIN-Regular", size: 15))
+                            .foregroundStyle(Color.primary)
+                        Spacer()
+                        Text("\(match.myScore) – \(match.opponentScore)")
+                            .font(.custom("DIN-Medium", size: 15))
+                            .foregroundStyle(match.won ? accentColor : labelColor)
+                    }
+                    .padding()
+
+                    if match.id != viewModel.myMatches.last?.id {
+                        Rectangle()
+                            .fill(labelColor.opacity(0.15))
+                            .frame(height: 1)
+                            .padding(.horizontal)
+                    }
+                }
+            }
+            .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 12))
         }
-        .padding()
-        .frame(maxWidth: .infinity)
-        .background(result.won ? Color.yellow.opacity(0.15) : Color.appSurface, in: RoundedRectangle(cornerRadius: 12))
     }
 
     private func nameHeader(_ player: GamePlayer) -> some View {

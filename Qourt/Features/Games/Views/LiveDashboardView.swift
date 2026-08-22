@@ -439,7 +439,10 @@ struct LiveDashboardView: View {
                                     .font(.custom("DIN-Medium", size: 17))
                                     .foregroundStyle(Color.appOnInverseSurface)
                                     .frame(width: 44, height: 44)
-                                    .background(Color.appInverseSurface, in: Circle())
+                                    .background(
+                                        (viewModel.gamesPlayedCount[player.id] ?? 0) >= 4 ? accentColor : Color.appInverseSurface,
+                                        in: Circle()
+                                    )
                                 Text(player.displayName)
                                     .font(.custom("DIN-Regular", size: 11))
                                     .lineLimit(1)
