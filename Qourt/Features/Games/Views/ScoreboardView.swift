@@ -85,7 +85,7 @@ struct ScoreboardView: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 20 * scale, weight: .semibold))
                     .foregroundStyle(Color.primary)
-                    .frame(width: 44 * scale, height: 44 * scale)
+                    .frame(width: 46 * scale, height: 46 * scale)
                     .background(Color(.systemGray5), in: Circle())
             }
             .buttonStyle(.plain)

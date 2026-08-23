@@ -198,9 +198,9 @@ struct MyGamesView: View {
             } label: {
                 Image(systemName: "person.crop.circle.fill")
                     .symbolRenderingMode(.monochrome)
-                    .font(.system(size: 22))
+                    .font(.system(size: 24))
                     .foregroundStyle(Color.primary)
-                    .frame(width: 40, height: 40)
+                    .frame(width: 44, height: 44)
                     //.background(Color(.blue))
                     .background(Color(.systemGray5), in: Circle())
             }

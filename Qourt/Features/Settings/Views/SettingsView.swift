@@ -23,7 +23,7 @@ struct SettingsView: View {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.system(size: 20, weight: .semibold))
                             // systemGray5 darkens in dark mode, so a fixed
                             // black glyph would disappear into it.
                             .foregroundStyle(Color.primary)
@@ -51,10 +51,10 @@ struct SettingsView: View {
                             ProgressView()
                         } else {
                             Text("Save")
-                                .font(.custom("DIN-Medium", size: 15))
+                                .font(.custom("DIN-Medium", size: 18))
                                 .foregroundStyle(.white)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 10)
                                 .background(
                                     Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255),
                                     in: Capsule()
