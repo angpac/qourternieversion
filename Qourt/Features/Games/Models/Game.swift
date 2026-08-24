@@ -26,6 +26,9 @@ struct Game: Codable, Identifiable, Hashable {
     /// link it. No club UI exists yet; this just keeps the model in sync
     /// with the schema so it's ready when that's built.
     var clubId: UUID?
+    /// One photo per game, posted by an admin/co-admin from Game Summary.
+    /// Nil until someone uploads one; read-only for players.
+    var recapPhotoUrl: String?
 
     enum CodingKeys: String, CodingKey {
         case id, name, location, status, format, archived
@@ -39,6 +42,7 @@ struct Game: Codable, Identifiable, Hashable {
         case requiresApproval = "requires_approval"
         case adminInviteCode = "admin_invite_code"
         case clubId = "club_id"
+        case recapPhotoUrl = "recap_photo_url"
     }
 
     var hasEnded: Bool { status == "ended" }

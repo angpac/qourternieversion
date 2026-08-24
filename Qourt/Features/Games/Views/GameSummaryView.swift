@@ -3,6 +3,7 @@
 //  Qourt
 //
 
+import PhotosUI
 import SwiftUI
 import Supabase
 
@@ -37,8 +38,19 @@ struct GameSummaryView: View {
     @State private var templateSaveError: String?
     @State private var didSaveTemplate = false
 
+    @State private var recapPhotoURL: URL?
+    @State private var recapPhotoItem: PhotosPickerItem?
+    @State private var isUploadingRecapPhoto = false
+    @State private var recapPhotoError: String?
+
     private let labelColor = Color.appSecondaryText
     private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
+
+    init(game: Game, isAdmin: Bool = true) {
+        self.game = game
+        self.isAdmin = isAdmin
+        _recapPhotoURL = State(initialValue: game.recapPhotoUrl.flatMap(URL.init(string:)))
+    }
 
     var body: some View {
         Group {
@@ -63,6 +75,8 @@ struct GameSummaryView: View {
                         .listRowSeparator(.hidden)
                         .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                     }
+
+                    recapPhotoSection
 
                     if let standout = tallies.max(by: { $0.wins < $1.wins }), standout.wins > 0 {
                         Section {
@@ -208,6 +222,125 @@ struct GameSummaryView: View {
             Button("OK") { templateSaveError = nil }
         } message: {
             Text(templateSaveError ?? "")
+        }
+        .onChange(of: recapPhotoItem) { _, newItem in
+            guard let newItem else { return }
+            Task { await uploadRecapPhoto(newItem) }
+        }
+        .alert("Couldn't upload photo", isPresented: .constant(recapPhotoError != nil)) {
+            Button("OK") { recapPhotoError = nil }
+        } message: {
+            Text(recapPhotoError ?? "")
+        }
+    }
+
+    /// Only rendered for an admin/co-admin with nothing to show yet, or for
+    /// anyone once a photo exists — a player with no photo to look at gets
+    /// no empty card they can't act on anyway.
+    @ViewBuilder
+    private var recapPhotoSection: some View {
+        if recapPhotoURL != nil || isAdmin {
+            Section {
+                Group {
+                    if let recapPhotoURL {
+                        recapPhotoCard(url: recapPhotoURL)
+                    } else {
+                        recapPhotoEmptyCard
+                    }
+                }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+            } header: {
+                Text("Recap photo")
+                    .font(.custom("DIN-Regular", size: 15))
+                    .foregroundStyle(labelColor)
+            }
+        }
+    }
+
+    private var recapPhotoEmptyCard: some View {
+        PhotosPicker(selection: $recapPhotoItem, matching: .images) {
+            VStack(spacing: 6) {
+                if isUploadingRecapPhoto {
+                    ProgressView()
+                } else {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundStyle(accentColor)
+                    Text("Add a recap photo")
+                        .font(.custom("DIN-Medium", size: 13))
+                        .foregroundStyle(accentColor)
+                    Text("One photo for this session")
+                        .font(.custom("DIN-Regular", size: 12))
+                        .foregroundStyle(labelColor)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 20)
+            .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .disabled(isUploadingRecapPhoto)
+    }
+
+    private func recapPhotoCard(url: URL) -> some View {
+        AsyncImage(url: url) { phase in
+            switch phase {
+            case let .success(image):
+                image.resizable().aspectRatio(contentMode: .fill)
+            default:
+                Color.appSurface
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .aspectRatio(16 / 10, contentMode: .fill)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(alignment: .bottomTrailing) {
+            if isAdmin {
+                PhotosPicker(selection: $recapPhotoItem, matching: .images) {
+                    Text(isUploadingRecapPhoto ? "Uploading…" : "Replace")
+                        .font(.custom("DIN-Medium", size: 12))
+                        .foregroundStyle(Color.primary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(.white.opacity(0.92), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(isUploadingRecapPhoto)
+                .padding(8)
+            }
+        }
+    }
+
+    @MainActor
+    private func uploadRecapPhoto(_ item: PhotosPickerItem) async {
+        recapPhotoItem = nil
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let uiImage = UIImage(data: data),
+              let jpegData = uiImage.jpegData(compressionQuality: 0.8)
+        else {
+            recapPhotoError = "Couldn't load that photo. Try again."
+            return
+        }
+
+        isUploadingRecapPhoto = true
+        defer { isUploadingRecapPhoto = false }
+        do {
+            let path = "\(game.id)/\(UUID().uuidString).jpg"
+            try await supabase.storage.from("game-recaps").upload(
+                path,
+                data: jpegData,
+                options: FileOptions(contentType: "image/jpeg", upsert: true)
+            )
+            let url = try supabase.storage.from("game-recaps").getPublicURL(path: path)
+            try await supabase.from("games")
+                .update(["recap_photo_url": url.absoluteString])
+                .eq("id", value: game.id)
+                .execute()
+            recapPhotoURL = url
+        } catch {
+            recapPhotoError = error.localizedDescription
         }
     }
 
