@@ -543,13 +543,13 @@ struct MyGamesView: View {
                         .disabled(adminInviteCode.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
                 }
+                .sheet(isPresented: $isScanningAdminInvite) {
+                    QRScannerSheet { code in
+                        adminInviteCode = code
+                    }
+                }
             }
             .presentationBackground(Color.appBackground)
-        }
-        .sheet(isPresented: $isScanningAdminInvite) {
-            QRScannerSheet { code in
-                adminInviteCode = code
-            }
         }
     }
 
