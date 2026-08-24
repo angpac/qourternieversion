@@ -83,9 +83,11 @@ struct ScoreboardView: View {
                 dismiss()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 20 * scale, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
+                    // systemGray5 darkens in dark mode, so a fixed
+                    // black glyph would disappear into it.
                     .foregroundStyle(Color.primary)
-                    .frame(width: 46 * scale, height: 46 * scale)
+                    .frame(width: 44, height: 44)
                     .background(Color(.systemGray5), in: Circle())
             }
             .buttonStyle(.plain)
