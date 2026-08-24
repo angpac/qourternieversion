@@ -16,6 +16,15 @@ struct MyGamesView: View {
     /// a game they've left can be sorted into Ended regardless of its
     /// date. Empty/unused for admins.
     @State private var myPlayerStatusByGameID: [UUID: PlayerStatus] = [:]
+    /// Player-only: this profile's own `game_players.id` per game — needed
+    /// to write `hidden_at` on swipe-delete, since that's a column on the
+    /// player's own roster row, not on `games`. Empty/unused for admins.
+    @State private var myGamePlayerRowIDByGameID: [UUID: UUID] = [:]
+    /// Set by the swipe action; the confirmation dialog reads it. Player-only
+    /// counterpart to `gamePendingDeletion` — this only ever touches the
+    /// player's own `game_players` row (`hidden_at`), never the shared game,
+    /// so it never happens straight off a gesture either, same reasoning.
+    @State private var gamePendingHideConfirmation: Game?
     /// Starts true so the very first render shows the spinner rather than
     /// the "No games yet" empty state. With `games` empty and this false,
     /// the empty state won a frame before `.task` could start loading —
@@ -332,6 +341,13 @@ struct MyGamesView: View {
                                     .tag(game)
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
+                                    .swipeActions(edge: .trailing) {
+                                        Button(role: .destructive) {
+                                            gamePendingHideConfirmation = game
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                    }
                             }
                         } header: {
                             Text("Ended")
@@ -386,6 +402,24 @@ struct MyGamesView: View {
             Button("Cancel", role: .cancel) { gamePendingEndConfirmation = nil }
         } message: {
             Text("Its join code, link, and QR code will stop working. This can't be undone.")
+        }
+        .confirmationDialog(
+            "Delete \(gamePendingHideConfirmation?.name ?? "this game")?",
+            isPresented: Binding(
+                get: { gamePendingHideConfirmation != nil },
+                set: { if !$0 { gamePendingHideConfirmation = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete game", role: .destructive) {
+                if let game = gamePendingHideConfirmation {
+                    Task { await hideEndedGame(game) }
+                }
+                gamePendingHideConfirmation = nil
+            }
+            Button("Cancel", role: .cancel) { gamePendingHideConfirmation = nil }
+        } message: {
+            Text("This removes it from your list only — the admin and other players still see it, and their copy of the history is unaffected.")
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
@@ -718,6 +752,30 @@ struct MyGamesView: View {
         }
     }
 
+    /// Player-only counterpart to `deleteGame` — writes `hidden_at` on the
+    /// player's own `game_players` row rather than deleting `games` itself,
+    /// so the admin and every other player keep the game and its history
+    /// exactly as it was. Removed from `games` locally right after, same as
+    /// `deleteGame`: this only ever changes a row admins/other players read,
+    /// not one this view's own `games` realtime subscription (on `games`,
+    /// not `game_players`) would ever notify it about.
+    @MainActor
+    private func hideEndedGame(_ game: Game) async {
+        guard let rowID = myGamePlayerRowIDByGameID[game.id] else { return }
+        do {
+            try await supabase.from("game_players")
+                .update(["hidden_at": ISO8601DateFormatter().string(from: Date())])
+                .eq("id", value: rowID)
+                .execute()
+            if selectedGame == game { selectedGame = nil }
+            withAnimation {
+                games.removeAll { $0.id == game.id }
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     @MainActor
     private func setArchived(_ game: Game, archived: Bool) async {
         do {
@@ -828,13 +886,28 @@ struct MyGamesView: View {
                         .value
                 }
             } else {
-                struct JoinedGameRow: Decodable { let status: PlayerStatus; let games: Game }
-                let rows: [JoinedGameRow] = try await supabase.from("game_players")
-                    .select("status, games(*)")
+                struct JoinedGameRow: Decodable {
+                    let id: UUID
+                    let status: PlayerStatus
+                    let hiddenAt: Date?
+                    let games: Game
+
+                    enum CodingKeys: String, CodingKey {
+                        case id, status, games
+                        case hiddenAt = "hidden_at"
+                    }
+                }
+                let allRows: [JoinedGameRow] = try await supabase.from("game_players")
+                    .select("id, status, hidden_at, games(*)")
                     .eq("profile_id", value: userID)
                     .execute()
                     .value
+                let rows = allRows.filter { $0.hiddenAt == nil }
                 games = rows.map(\.games)
+                myGamePlayerRowIDByGameID = Dictionary(
+                    rows.map { ($0.games.id, $0.id) },
+                    uniquingKeysWith: { current, _ in current }
+                )
                 myPlayerStatusByGameID = Dictionary(
                     rows.map { ($0.games.id, $0.status) },
                     uniquingKeysWith: { current, _ in current }
