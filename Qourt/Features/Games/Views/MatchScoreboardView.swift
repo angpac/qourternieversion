@@ -136,7 +136,7 @@ struct MatchScoreboardView: View {
     private func teamPanel(name: String, score: Int, isLeading: Bool, scale: CGFloat) -> some View {
         VStack(spacing: 12 * scale) {
             Text(name)
-                .font(.custom("DIN-Medium", size: 24 * scale))
+                .font(.custom("DIN-Medium", size: 34 * scale))
                 .foregroundStyle(Color.primary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
@@ -146,7 +146,7 @@ struct MatchScoreboardView: View {
             Spacer()
 
             Text("\(score)")
-                .font(.custom("DIN-BlackAlternate", size: 220 * scale))
+                .font(.custom("DIN-BlackAlternate", size: 280 * scale))
                 .foregroundStyle(isLeading ? accentColor : Color.primary)
                 .minimumScaleFactor(0.4)
                 .lineLimit(1)
