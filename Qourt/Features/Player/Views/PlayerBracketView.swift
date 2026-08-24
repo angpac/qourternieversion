@@ -25,6 +25,18 @@ struct PlayerBracketView: View {
                 } else if viewModel.tournament == nil {
                     emptyState
                 } else {
+                    // The champion banner below already signals a natural
+                    // finish — this is only for the other case, an admin
+                    // ending the session before the bracket ran its course.
+                    if viewModel.hasEnded && viewModel.championName == nil {
+                        Label("This session has ended", systemImage: "flag.checkered")
+                            .font(.custom("DIN-Medium", size: 13))
+                            .foregroundStyle(labelColor)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 12))
+                    }
+
                     if let championName = viewModel.championName {
                         VStack(spacing: 8) {
                             Image(systemName: "trophy.fill").font(.system(size: 32)).foregroundStyle(.yellow)

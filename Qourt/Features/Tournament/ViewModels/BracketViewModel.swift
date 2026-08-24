@@ -21,6 +21,7 @@ final class BracketViewModel {
     var activeMatches: [UUID: MatchWithPlayers] = [:] // keyed by tournament_match id
     var playerNames: [UUID: String] = [:]
     var gameStatus: String
+    var hasEnded: Bool { gameStatus == "ended" }
     var isLoading = true
     var errorMessage: String?
 

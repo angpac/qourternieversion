@@ -42,47 +42,55 @@ struct PlayerLiveStatusView: View {
                     // to confirm who they are, courtside.
                     nameHeader(player)
 
-                    if !viewModel.isConnected {
-                        reconnectingBanner
-                    }
-
-                    if viewModel.isPaused {
-                        pausedBanner
-                    }
-
-                    if let prepEndsAt = viewModel.prepEndsAt {
-                        prepCountdownBanner(prepEndsAt)
-                    }
-
-                    if let latest = viewModel.announcements.first {
-                        announcementBanner(latest)
-                    }
-
-                    if !viewModel.myMatches.isEmpty {
-                        playerMatchSection
-                    }
-
-                    switch player.status {
-                    case .pending:
-                        statusCard(icon: "hourglass", title: "Waiting for approval", subtitle: "The host needs to approve you before you can join the line.")
-                    case .queued:
-                        queuedCard
-                        if viewModel.isPicker && !viewModel.isPaused {
-                            pickerCard
+                    // Once the game's over, nothing below this point — the
+                    // queue/court card, leave/skip, the join code — is still
+                    // actionable, so it's replaced wholesale rather than
+                    // layered in alongside a stale status.
+                    if viewModel.hasEnded {
+                        statusCard(icon: "flag.checkered", title: "This session has ended", subtitle: "Thanks for playing — ask the host if there's another one coming up.")
+                    } else {
+                        if !viewModel.isConnected {
+                            reconnectingBanner
                         }
-                    case .onCourt:
-                        onCourtCard
-                    case .resting:
-                        statusCard(icon: "pause.circle.fill", title: "You're resting", subtitle: "Step back in whenever you're ready.")
-                    case .removed:
-                        statusCard(icon: "xmark.circle.fill", title: "You've left this game", subtitle: nil)
-                    }
 
-                    if player.status != .removed {
-                        playerActions(for: player)
-                    }
+                        if viewModel.isPaused {
+                            pausedBanner
+                        }
 
-                    rosterLink
+                        if let prepEndsAt = viewModel.prepEndsAt {
+                            prepCountdownBanner(prepEndsAt)
+                        }
+
+                        if let latest = viewModel.announcements.first {
+                            announcementBanner(latest)
+                        }
+
+                        if !viewModel.myMatches.isEmpty {
+                            playerMatchSection
+                        }
+
+                        switch player.status {
+                        case .pending:
+                            statusCard(icon: "hourglass", title: "Waiting for approval", subtitle: "The host needs to approve you before you can join the line.")
+                        case .queued:
+                            queuedCard
+                            if viewModel.isPicker && !viewModel.isPaused {
+                                pickerCard
+                            }
+                        case .onCourt:
+                            onCourtCard
+                        case .resting:
+                            statusCard(icon: "pause.circle.fill", title: "You're resting", subtitle: "Step back in whenever you're ready.")
+                        case .removed:
+                            statusCard(icon: "xmark.circle.fill", title: "You've left this game", subtitle: nil)
+                        }
+
+                        if player.status != .removed {
+                            playerActions(for: player)
+                        }
+
+                        rosterLink
+                    }
                 }
                 .padding()
                 .frame(maxWidth: .infinity)
@@ -487,6 +495,25 @@ private let previewGame = Game(
             sentAt: Date()
         )
     ]
+    return NavigationStack {
+        PlayerLiveStatusView(game: previewGame, previewViewModel: vm)
+    }
+}
+
+#Preview("Session ended") {
+    let vm = PlayerLiveStatusViewModel(game: previewGame)
+    vm.isLoading = false
+    vm.gameStatus = "ended"
+    vm.myPlayer = GamePlayer(
+        id: UUID(),
+        gameId: previewGame.id,
+        profileId: nil,
+        displayName: "Jamie Lee",
+        skillLevel: "Intermediate",
+        status: .queued,
+        queuePosition: 3,
+        joinedAt: Date()
+    )
     return NavigationStack {
         PlayerLiveStatusView(game: previewGame, previewViewModel: vm)
     }

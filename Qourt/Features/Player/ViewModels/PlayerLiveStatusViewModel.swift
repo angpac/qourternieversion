@@ -101,6 +101,7 @@ final class PlayerLiveStatusViewModel {
 
     var gameStatus: String
     var isPaused: Bool { gameStatus == "paused" }
+    var hasEnded: Bool { gameStatus == "ended" }
 
     private var realtimeChannel: RealtimeChannelV2?
     private var realtimeSubscriptions: [RealtimeSubscription] = []
