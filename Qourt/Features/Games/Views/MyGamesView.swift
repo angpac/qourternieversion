@@ -119,7 +119,15 @@ struct MyGamesView: View {
         } detail: {
             NavigationStack {
                 if let selectedGame {
+                    // NavigationSplitView keeps this detail pane mounted on
+                    // iPad instead of pushing a fresh one like iPhone does,
+                    // so without an explicit identity SwiftUI treats
+                    // switching between two ongoing games as the same view
+                    // (same type, same position) and never rebuilds
+                    // LiveDashboardView's @State — the screen just kept
+                    // showing whichever game was selected first.
                     destination(for: selectedGame)
+                        .id(selectedGame.id)
                 } else {
                     ContentUnavailableView(
                         "Select a game",
