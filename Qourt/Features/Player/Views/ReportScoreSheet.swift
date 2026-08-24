@@ -27,49 +27,53 @@ struct ReportScoreSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                HStack {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 20, weight: .semibold))
-                            // systemGray5 darkens in dark mode, so a fixed
-                            // black glyph would disappear into it.
-                            .foregroundStyle(Color.primary)
-                            .frame(width: 44, height: 44)
-                            .background(Color(.systemGray5), in: Circle())
-                    }
-                    .buttonStyle(.plain)
-
-                    Spacer()
-
+                ZStack {
+                    // Centered independently of the HStack below — the X
+                    // button and Submit aren't the same width, so two
+                    // Spacers either side of the title would center it
+                    // between them instead of on the row itself.
                     Text("Report score")
                         .font(.custom("DIN-Medium", size: 17))
                         .foregroundStyle(Color.primary)
 
-                    Spacer()
-
-                    Button {
-                        Task {
-                            isSaving = true
-                            await viewModel.reportScore(scoreA: scoreA, scoreB: scoreB)
-                            isSaving = false
+                    HStack {
+                        Button {
                             dismiss()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 20, weight: .semibold))
+                                // systemGray5 darkens in dark mode, so a fixed
+                                // black glyph would disappear into it.
+                                .foregroundStyle(Color.primary)
+                                .frame(width: 44, height: 44)
+                                .background(Color(.systemGray5), in: Circle())
                         }
-                    } label: {
-                        if isSaving {
-                            ProgressView()
-                        } else {
-                            Text("Submit")
-                                .font(.custom("DIN-Regular", size: 18))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 18)
-                                .padding(.vertical, 10)
-                                .background(accentColor, in: Capsule())
+                        .buttonStyle(.plain)
+
+                        Spacer()
+
+                        Button {
+                            Task {
+                                isSaving = true
+                                await viewModel.reportScore(scoreA: scoreA, scoreB: scoreB)
+                                isSaving = false
+                                dismiss()
+                            }
+                        } label: {
+                            if isSaving {
+                                ProgressView()
+                            } else {
+                                Text("Submit")
+                                    .font(.custom("DIN-Regular", size: 18))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 18)
+                                    .padding(.vertical, 10)
+                                    .background(accentColor, in: Capsule())
+                            }
                         }
+                        .buttonStyle(.plain)
+                        .disabled(isSaving)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(isSaving)
                 }
                 .padding()
 
