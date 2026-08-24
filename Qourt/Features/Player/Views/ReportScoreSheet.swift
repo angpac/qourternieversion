@@ -32,7 +32,9 @@ struct ReportScoreSheet: View {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.system(size: 20, weight: .semibold))
+                            // systemGray5 darkens in dark mode, so a fixed
+                            // black glyph would disappear into it.
                             .foregroundStyle(Color.primary)
                             .frame(width: 44, height: 44)
                             .background(Color(.systemGray5), in: Circle())
@@ -59,10 +61,10 @@ struct ReportScoreSheet: View {
                             ProgressView()
                         } else {
                             Text("Submit")
-                                .font(.custom("DIN-Regular", size: 15))
+                                .font(.custom("DIN-Regular", size: 18))
                                 .foregroundStyle(.white)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 10)
                                 .background(accentColor, in: Capsule())
                         }
                     }

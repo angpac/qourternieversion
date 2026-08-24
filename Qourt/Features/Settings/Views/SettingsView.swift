@@ -15,6 +15,7 @@ struct SettingsView: View {
 
     private let skillLevels = ["Beginner", "Intermediate", "Advanced"]
     private let labelColor = Color(red: 0x5F / 255, green: 0x4C / 255, blue: 0x00 / 255)
+    private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
 
     var body: some View {
         VStack(spacing: 0) {
@@ -55,10 +56,7 @@ struct SettingsView: View {
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 18)
                                 .padding(.vertical, 10)
-                                .background(
-                                    Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255),
-                                    in: Capsule()
-                                )
+                                .background(accentColor, in: Capsule())
                         }
                     }
                     .buttonStyle(.plain)
