@@ -47,7 +47,7 @@ struct PlayerLiveStatusView: View {
                     // actionable, so it's replaced wholesale rather than
                     // layered in alongside a stale status.
                     if viewModel.hasEnded {
-                        statusCard(icon: "flag.checkered", title: "This session has ended", subtitle: "Thanks for playing — ask the host if there's another one coming up.")
+                        statusCard(icon: "flag.checkered", title: "This session has ended", subtitle: "Thanks for playing — ask the host if there's another one coming up.", iconColor: Color.primary)
                     } else {
                         if !viewModel.isConnected {
                             reconnectingBanner
@@ -426,11 +426,11 @@ struct PlayerLiveStatusView: View {
         .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 16))
     }
 
-    private func statusCard(icon: String, title: String, subtitle: String?) -> some View {
+    private func statusCard(icon: String, title: String, subtitle: String?, iconColor: Color? = nil) -> some View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 40))
-                .foregroundStyle(labelColor)
+                .foregroundStyle(iconColor ?? labelColor)
             Text(title)
                 .font(.custom("DIN-Medium", size: 20))
                 .foregroundStyle(Color.primary)
