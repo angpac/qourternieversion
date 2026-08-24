@@ -35,6 +35,9 @@ struct MyGamesView: View {
     /// game cascades to its roster, matches, and everyone's history, so it
     /// never happens straight off a gesture.
     @State private var gamePendingDeletion: Game?
+    /// Same reasoning as `gamePendingDeletion` — ending a game stops its
+    /// join code/link/QR from working, for every player, permanently.
+    @State private var gamePendingEndConfirmation: Game?
     @State private var isCreatingGame = false
     @State private var isChoosingTemplate = false
     @State private var pendingCreateAfterTemplate = false
@@ -238,6 +241,13 @@ struct MyGamesView: View {
                                     .tag(game)
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                        Button(role: .destructive) {
+                                            gamePendingEndConfirmation = game
+                                        } label: {
+                                            Label("End game", systemImage: "flag.checkered")
+                                        }
+                                    }
                             }
                         } header: {
                             Text("Ongoing")
@@ -358,6 +368,24 @@ struct MyGamesView: View {
             Button("Cancel", role: .cancel) { gamePendingDeletion = nil }
         } message: {
             Text("This removes the roster, every match, and the game's history for all players. Archive instead if you just want it out of the list.")
+        }
+        .confirmationDialog(
+            "End \(gamePendingEndConfirmation?.name ?? "this game")?",
+            isPresented: Binding(
+                get: { gamePendingEndConfirmation != nil },
+                set: { if !$0 { gamePendingEndConfirmation = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("End game", role: .destructive) {
+                if let game = gamePendingEndConfirmation {
+                    Task { await endGame(game) }
+                }
+                gamePendingEndConfirmation = nil
+            }
+            Button("Cancel", role: .cancel) { gamePendingEndConfirmation = nil }
+        } message: {
+            Text("Its join code, link, and QR code will stop working. This can't be undone.")
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
@@ -669,6 +697,22 @@ struct MyGamesView: View {
             // its own delete event arrives, which is a harmless no-op
             // against an array that no longer has it, and is what keeps
             // another co-admin's device in sync with this deletion.
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func endGame(_ game: Game) async {
+        do {
+            try await supabase.from("games")
+                .update(["status": "ended"])
+                .eq("id", value: game.id)
+                .execute()
+            // No reload here — same reasoning as setArchived below: the
+            // realtime subscription's applyGameChange patches this row's
+            // status the moment the update comes back through, moving it
+            // from Ongoing to Ended without a full-list flash.
         } catch {
             errorMessage = error.localizedDescription
         }
