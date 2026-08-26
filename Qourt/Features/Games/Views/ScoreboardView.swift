@@ -169,7 +169,7 @@ private struct ScoreboardCourtCard: View {
                     .font(.custom("DIN-Medium", size: 22 * scale))
                     .foregroundStyle(Color.primary)
                 if court.isChallengeCourt {
-                    Image(systemName: "crown.fill")
+                    Image(systemName: "flame.fill")
                         .font(.system(size: 18 * scale))
                         .foregroundStyle(goldColor)
                 }

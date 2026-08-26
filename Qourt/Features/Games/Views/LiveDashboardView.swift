@@ -503,7 +503,7 @@ private struct CourtCard: View {
                     }
                     Spacer()
                     if court.isChallengeCourt {
-                        Image(systemName: "crown.fill")
+                        Image(systemName: "flame.fill")
                             .foregroundStyle(goldColor)
                     } else if let match {
                         Circle()
@@ -513,7 +513,7 @@ private struct CourtCard: View {
                 }
 
                 if court.isChallengeCourt {
-                    Text("KING'S COURT")
+                    Text("CHALLENGE COURT")
                         .font(.custom("DIN-Medium", size: 11))
                         .foregroundStyle(goldColor)
                 }
