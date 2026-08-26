@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -154,7 +155,7 @@ export default function JoinForm({ initialCode = "" }: { initialCode?: string })
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Name"
-          className="rounded-lg border border-zinc-300 px-4 py-3 focus:border-emerald-600 focus:outline-none"
+          className="rounded-lg border border-zinc-300 px-4 py-3 text-zinc-900 focus:border-emerald-600 focus:outline-none"
         />
       </div>
 
@@ -166,7 +167,7 @@ export default function JoinForm({ initialCode = "" }: { initialCode?: string })
           id="skillLevel"
           value={skillLevel}
           onChange={(e) => setSkillLevel(e.target.value)}
-          className="rounded-lg border border-zinc-300 px-4 py-3 focus:border-emerald-600 focus:outline-none"
+          className="rounded-lg border border-zinc-300 px-4 py-3 text-zinc-900 focus:border-emerald-600 focus:outline-none"
         >
           {SKILL_LEVELS.map((level) => (
             <option key={level} value={level}>
@@ -185,6 +186,18 @@ export default function JoinForm({ initialCode = "" }: { initialCode?: string })
       >
         {isJoining ? "Joining…" : "Join"}
       </button>
+
+      <p className="text-center text-xs text-zinc-500">
+        By joining you agree to our{" "}
+        <Link href="/terms" className="text-emerald-700 underline underline-offset-2">
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="text-emerald-700 underline underline-offset-2">
+          Privacy Policy
+        </Link>
+        .
+      </p>
     </form>
   );
 }
