@@ -19,6 +19,9 @@ struct CreateGameView: View {
                 TextField("Name", text: $viewModel.name)
                 TextField("Location", text: $viewModel.location)
                 dateAndTimeRow
+                if isShowingTimePicker {
+                    timeWheel
+                }
             }
 
             if !viewModel.availableClubs.isEmpty {
@@ -161,11 +164,12 @@ struct CreateGameView: View {
     /// the original look, before this got split into two stacked rows to
     /// chase a trackpad bug. The date pill is the untouched native
     /// DatePicker, which was never the problem. The time pill is a plain
-    /// button styled to match it, tapping into a wheel picker inside a
-    /// popover we control — that popover's own presentation already works
-    /// fine with a Magic Keyboard trackpad (same mechanism the date pill
-    /// uses); what was actually broken was the compact style's *built-in*
-    /// hour/minute editor, so this replaces just that, not the row layout.
+    /// button that expands `timeWheel` as the *next row in the Form*, not
+    /// a `.popover` — `.popover`'s arrowEdge turned out to be unreliable
+    /// here (verified on-device: neither .top nor .bottom stopped it from
+    /// opening upward over Name/Location), where an ordinary Form row can
+    /// only ever land below, exactly like the date pill's own calendar
+    /// pushes the rows under it down instead of floating over them.
     private var dateAndTimeRow: some View {
         HStack {
             Text("Date & time")
@@ -178,7 +182,7 @@ struct CreateGameView: View {
 
     private var timePill: some View {
         Button {
-            isShowingTimePicker = true
+            withAnimation { isShowingTimePicker.toggle() }
         } label: {
             Text(viewModel.startsAt, style: .time)
                 // Matches the date pill's own active-state color, which
@@ -193,23 +197,26 @@ struct CreateGameView: View {
                 .background(Color(.tertiarySystemFill), in: Capsule())
         }
         .buttonStyle(.plain)
-        // arrowEdge is the edge of the *popover itself* the arrow sits on,
-        // not the anchor's — .bottom (arrow on the popover's bottom edge,
-        // pointing down into the anchor) was verified on-device to still
-        // open the picker upward over Name/Location. .top puts the arrow
-        // on the popover's top edge instead, which is what actually opens
-        // it below the row, matching the date pill's calendar.
-        .popover(isPresented: $isShowingTimePicker, arrowEdge: .top) {
-            DatePicker(
-                "Time",
-                selection: $viewModel.startsAt,
-                displayedComponents: [.hourAndMinute]
-            )
-            .datePickerStyle(.wheel)
-            .labelsHidden()
-            .padding()
-            .presentationCompactAdaptation(.popover)
-        }
+    }
+
+    /// Scaled down from the wheel's native size, which otherwise renders
+    /// noticeably larger/bolder than the date calendar's own day-number
+    /// type — the scale is applied before the frame that then clips to
+    /// it, so the row's height shrinks along with the visual rather than
+    /// leaving the wheel's original, now-empty space around it.
+    private var timeWheel: some View {
+        DatePicker(
+            "Time",
+            selection: $viewModel.startsAt,
+            displayedComponents: [.hourAndMinute]
+        )
+        .datePickerStyle(.wheel)
+        .labelsHidden()
+        .scaleEffect(0.82)
+        .frame(height: 130)
+        .frame(maxWidth: .infinity)
+        .clipped()
+        .listRowInsets(EdgeInsets())
     }
 
     private func courtSinglesBinding(_ index: Int) -> Binding<Bool> {
