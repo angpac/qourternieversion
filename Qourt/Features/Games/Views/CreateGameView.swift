@@ -187,7 +187,11 @@ struct CreateGameView: View {
                 .background(Color(.tertiarySystemFill), in: Capsule())
         }
         .buttonStyle(.plain)
-        .popover(isPresented: $isShowingTimePicker) {
+        // arrowEdge pinned to .bottom (the arrow attaches to the *anchor's*
+        // bottom edge) so this always opens below the row, like the date
+        // pill's own calendar dropdown — left to the system default, it was
+        // opening upward instead and covering Name/Location.
+        .popover(isPresented: $isShowingTimePicker, arrowEdge: .bottom) {
             DatePicker(
                 "Time",
                 selection: $viewModel.startsAt,
