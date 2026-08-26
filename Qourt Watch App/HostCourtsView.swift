@@ -7,6 +7,7 @@ import SwiftUI
 
 struct HostCourtsView: View {
     @Bindable var viewModel: WatchHostViewModel
+    let game: WatchGame
     @State private var editing: WatchCourtMatch?
 
     var body: some View {
@@ -17,8 +18,8 @@ struct HostCourtsView: View {
                 courtsList
             }
         }
-        .navigationTitle("Score Courts")
-        .task { await viewModel.start() }
+        .navigationTitle(game.name)
+        .task { await viewModel.start(gameID: game.id) }
         .onDisappear { Task { await viewModel.unsubscribe() } }
         .sheet(item: $editing) { court in
             if let matchID = court.matchID {
@@ -40,13 +41,6 @@ struct HostCourtsView: View {
 
     private var courtsList: some View {
         List {
-            if let gameName = viewModel.gameName {
-                Text(gameName)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .listRowBackground(Color.clear)
-            }
-
             if viewModel.courts.isEmpty {
                 Text("No courts yet")
                     .font(.footnote)

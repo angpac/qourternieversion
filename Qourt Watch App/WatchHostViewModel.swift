@@ -48,19 +48,15 @@ final class WatchHostViewModel {
         isAdmin = gameID != nil
     }
 
-    /// Full host load — courts, scores and realtime. Not reachable from the
-    /// UI yet; see `HostCourtsView` for the pending host experience.
+    /// Full host load — courts, scores and realtime, for one specific game
+    /// tapped from `WatchGamesListView`'s admin list. Unlike `checkIsAdmin`,
+    /// this doesn't need to resolve which game to use — the caller already
+    /// knows, from the same list query that put it there.
     @MainActor
-    func start() async {
+    func start(gameID: UUID) async {
         isLoading = true
         defer { isLoading = false }
-
-        guard let userID = (try? await supabase.auth.session)?.user.id else {
-            isAdmin = false
-            return
-        }
-        await resolveAdminGame(userID: userID)
-        guard gameID != nil else { isAdmin = false; return }
+        self.gameID = gameID
         isAdmin = true
         await load()
         await subscribeToChanges()

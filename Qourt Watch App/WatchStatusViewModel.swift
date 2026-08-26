@@ -6,20 +6,21 @@
 import Foundation
 import Supabase
 
-struct WatchGame: Codable {
+struct WatchGame: Codable, Identifiable, Hashable {
     var id: UUID
     var name: String
+    var status: String
+
+    var hasEnded: Bool { status == "ended" }
 
     enum CodingKeys: String, CodingKey {
-        case id, name
+        case id, name, status
     }
 }
 
 @Observable
 final class WatchStatusViewModel {
-    var isSignedIn = false
     var isLoading = true
-    var gameName: String?
     var playerStatus: PlayerStatus?
     var queuePosition: Int?
     /// How many players are in line in total, so "#3" can be shown as
@@ -46,58 +47,48 @@ final class WatchStatusViewModel {
     private var realtimeChannel: RealtimeChannelV2?
     private var realtimeSubscriptions: [RealtimeSubscription] = []
 
+    /// Scoped to one game, tapped from `WatchGamesListView` — the caller
+    /// already knows the game (and whether it's ended), so this only ever
+    /// resolves this player's own row within it, rather than guessing which
+    /// of possibly several games is the "active" one.
     @MainActor
-    func start() async {
+    func start(gameID: UUID) async {
         isLoading = true
         defer { isLoading = false }
+        self.gameID = gameID
 
         guard let userID = (try? await supabase.auth.session)?.user.id else {
-            isSignedIn = false
             // The phone may not have handed tokens over yet.
             WatchSessionBridge.shared.requestSessionFromPhone()
             return
         }
-        isSignedIn = true
-        await load(userID: userID)
+        await load(userID: userID, gameID: gameID)
         await subscribeToChanges()
     }
 
     @MainActor
-    private func load(userID: UUID) async {
+    private func load(userID: UUID, gameID: UUID) async {
         struct ActivePlayerRow: Decodable {
             let id: UUID
             let status: PlayerStatus
             let queue_position: Int?
-            let joined_at: Date
-            let games: WatchGame
         }
 
         do {
-            // !inner + games.status so an ended game drops off the wrist
-            // the moment the admin ends it, not just when this player's own
-            // status happens to change too — ending a game only ever
-            // touches games.status, never resets the participant rows, so
-            // without this a player who was still queued/on court when the
-            // game ended would see it forever.
+            // No status filter here, unlike the old single-row auto-detect
+            // query — this is always exactly the row for (userID, gameID),
+            // so a player who left shows "You've left this game" instead of
+            // silently vanishing into "no active game".
             let rows: [ActivePlayerRow] = try await supabase.from("game_players")
-                .select("id, status, queue_position, joined_at, games!inner(id, name)")
+                .select("id, status, queue_position")
                 .eq("profile_id", value: userID)
-                .in("status", values: [
-                    PlayerStatus.pending.rawValue,
-                    PlayerStatus.queued.rawValue,
-                    PlayerStatus.onCourt.rawValue,
-                    PlayerStatus.resting.rawValue
-                ])
-                .neq("games.status", value: "ended")
-                .order("joined_at", ascending: false)
+                .eq("game_id", value: gameID)
                 .limit(1)
                 .execute()
                 .value
 
             guard let active = rows.first else {
-                gameName = nil
                 playerStatus = nil
-                gameID = nil
                 playerID = nil
                 queuePosition = nil
                 queueTotal = nil
@@ -106,14 +97,12 @@ final class WatchStatusViewModel {
                 return
             }
 
-            gameName = active.games.name
             playerStatus = active.status
-            gameID = active.games.id
             playerID = active.id
 
             switch active.status {
             case .queued:
-                let queue = try await loadQueue(gameID: active.games.id)
+                let queue = try await loadQueue(gameID: gameID)
                 queueTotal = queue.count
                 queuePosition = queue.firstIndex(of: active.id).map { $0 + 1 }
                 clearCourtState()
@@ -131,7 +120,7 @@ final class WatchStatusViewModel {
                 clearCourtState()
             }
 
-            await loadAnnouncements(playerID: active.id, gameID: active.games.id)
+            await loadAnnouncements(playerID: active.id, gameID: gameID)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -139,8 +128,8 @@ final class WatchStatusViewModel {
 
     @MainActor
     func refresh() async {
-        guard let userID = (try? await supabase.auth.session)?.user.id else { return }
-        await load(userID: userID)
+        guard let gameID, let userID = (try? await supabase.auth.session)?.user.id else { return }
+        await load(userID: userID, gameID: gameID)
     }
 
     /// The whole queue in display order, so position and total come from

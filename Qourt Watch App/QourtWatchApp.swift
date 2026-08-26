@@ -18,7 +18,7 @@ struct QourtWatchApp: App {
     var body: some Scene {
         WindowGroup {
             NavigationStack {
-                ContentView()
+                WatchGamesListView()
             }
         }
     }

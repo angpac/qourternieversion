@@ -2,40 +2,26 @@
 //  ContentView.swift
 //  Qourt Watch App
 //
-//  The Watch is a player companion: your place in line, your court, your
-//  score, and the host's announcements. An admin gets an extra entry point
-//  into `HostCourtsView` to score whichever courts are live — remote
-//  control for the same match the iPad Scoreboard is already showing,
-//  driven by `WatchHostViewModel` straight against Supabase.
+//  A player's own place in one game — line position, court, score, and the
+//  host's announcements — reached by tapping a game in WatchGamesListView.
+//  Scoped to that one game via WatchStatusViewModel.start(gameID:), rather
+//  than the old auto-detect-the-active-game flow this replaced.
 //
 
 import SwiftUI
 
 struct ContentView: View {
+    let game: WatchGame
     @State private var viewModel = WatchStatusViewModel()
-    @State private var hostViewModel = WatchHostViewModel()
-    @State private var bridge = WatchSessionBridge.shared
     @State private var isConfirmingLeave = false
 
     var body: some View {
         ScrollView {
             content.padding(.horizontal, 4)
         }
+        .navigationTitle(game.name)
         .refreshable { await viewModel.refresh() }
-        .task {
-            await viewModel.start()
-            await hostViewModel.checkIsAdmin()
-        }
-        .onChange(of: bridge.isSignedIn) { _, isSignedIn in
-            guard isSignedIn else { return }
-            // Tokens just arrived from the phone — everything that failed
-            // on launch can now succeed.
-            Task {
-                await viewModel.start()
-                await hostViewModel.checkIsAdmin()
-                await PushNotificationManager.requestAuthorizationAndRegister()
-            }
-        }
+        .task { await viewModel.start(gameID: game.id) }
         .confirmationDialog(
             "Leave this game?",
             isPresented: $isConfirmingLeave,
@@ -50,60 +36,29 @@ struct ContentView: View {
 
     @ViewBuilder
     private var content: some View {
-        if viewModel.isLoading {
+        // The list already marks this game Ended — skip the round trip
+        // entirely rather than show whatever queue/court state this
+        // player's row was frozen at when the admin ended it.
+        if game.hasEnded {
+            statusCard(
+                icon: "flag.checkered",
+                title: "This session has ended",
+                subtitle: "Thanks for playing — ask the host if there's another one coming up."
+            )
+            .padding(.vertical, 4)
+        } else if viewModel.isLoading {
             ProgressView()
-        } else if !viewModel.isSignedIn {
-            signedOutState
         } else {
             VStack(spacing: 10) {
-                if let gameName = viewModel.gameName {
-                    Text(gameName)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-
                 if let latest = viewModel.announcements.first {
                     announcementBanner(latest)
                 }
 
                 statusSection
                 actionSection
-
-                // Shown last so it never pushes the player's own status
-                // below the fold, but always shown to an admin — including
-                // when they have no active game, which would otherwise
-                // read as "the Watch app is broken".
-                if hostViewModel.isAdmin {
-                    NavigationLink {
-                        HostCourtsView(viewModel: hostViewModel)
-                    } label: {
-                        Label("Score courts", systemImage: "sportscourt")
-                            .font(.system(size: 12, weight: .semibold))
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.green)
-                    .padding(.top, 2)
-                }
             }
             .padding(.vertical, 4)
         }
-    }
-
-    // MARK: - States
-
-    private var signedOutState: some View {
-        VStack(spacing: 6) {
-            Image(systemName: "iphone.gen3")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-            Text(bridge.hasReceivedPayload ? "Sign in on your iPhone"
-                                           : "Open Qourt on your iPhone")
-                .font(.footnote)
-                .multilineTextAlignment(.center)
-        }
-        .padding(.top, 24)
     }
 
     @ViewBuilder
@@ -296,5 +251,7 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
+    NavigationStack {
+        ContentView(game: WatchGame(id: UUID(), name: "Sunday Open Play", status: "live"))
+    }
 }
