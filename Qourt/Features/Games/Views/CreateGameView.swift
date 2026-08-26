@@ -193,11 +193,13 @@ struct CreateGameView: View {
                 .background(Color(.tertiarySystemFill), in: Capsule())
         }
         .buttonStyle(.plain)
-        // arrowEdge pinned to .bottom (the arrow attaches to the *anchor's*
-        // bottom edge) so this always opens below the row, like the date
-        // pill's own calendar dropdown — left to the system default, it was
-        // opening upward instead and covering Name/Location.
-        .popover(isPresented: $isShowingTimePicker, arrowEdge: .bottom) {
+        // arrowEdge is the edge of the *popover itself* the arrow sits on,
+        // not the anchor's — .bottom (arrow on the popover's bottom edge,
+        // pointing down into the anchor) was verified on-device to still
+        // open the picker upward over Name/Location. .top puts the arrow
+        // on the popover's top edge instead, which is what actually opens
+        // it below the row, matching the date pill's calendar.
+        .popover(isPresented: $isShowingTimePicker, arrowEdge: .top) {
             DatePicker(
                 "Time",
                 selection: $viewModel.startsAt,
