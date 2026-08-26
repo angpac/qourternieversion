@@ -647,9 +647,25 @@ struct MyGamesView: View {
         } else if game.format.isTournament {
             PlayerBracketView(game: game)
         } else {
-            PlayerLiveStatusView(game: game, onLeftGame: {
-                myPlayerStatusByGameID[game.id] = .removed
-            })
+            PlayerLiveStatusView(
+                game: game,
+                onLeftGame: {
+                    myPlayerStatusByGameID[game.id] = .removed
+                },
+                onGameEnded: {
+                    // Reassigning selectedGame (rather than clearing it,
+                    // like the admin's onGameEnded above) keeps this same
+                    // detail-pane slot selected — since its .id(...) is
+                    // keyed on game.id, not status, destination(for:)
+                    // just swaps in GameSummaryView here in place, with
+                    // no extra push. Back from there goes straight to My
+                    // games, not back through the ended card.
+                    if let index = games.firstIndex(where: { $0.id == game.id }) {
+                        games[index].status = "ended"
+                        selectedGame = games[index]
+                    }
+                }
+            )
         }
     }
 

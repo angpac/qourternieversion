@@ -20,14 +20,28 @@ struct PlayerLiveStatusView: View {
     /// game_players realtime events the way this screen does).
     var onLeftGame: (() -> Void)?
 
+    /// Called from the "View summary" button once the session has ended.
+    /// My Games marks its own copy of the game ended and re-selects it,
+    /// which swaps this screen's spot in the detail pane for
+    /// GameSummaryView in place — no extra push, so the system back button
+    /// goes straight to My games rather than back through this now-moot
+    /// "session ended" card.
+    var onGameEnded: (() -> Void)?
+
     private let labelColor = Color.appSecondaryText
     private let accentColor = Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
     private let destructiveColor = Color(red: 0xFF / 255, green: 0x42 / 255, blue: 0x45 / 255)
 
-    init(game: Game, previewViewModel: PlayerLiveStatusViewModel? = nil, onLeftGame: (() -> Void)? = nil) {
+    init(
+        game: Game,
+        previewViewModel: PlayerLiveStatusViewModel? = nil,
+        onLeftGame: (() -> Void)? = nil,
+        onGameEnded: (() -> Void)? = nil
+    ) {
         _viewModel = State(initialValue: previewViewModel ?? PlayerLiveStatusViewModel(game: game))
         skipsInitialLoad = previewViewModel != nil
         self.onLeftGame = onLeftGame
+        self.onGameEnded = onGameEnded
     }
 
     var body: some View {
@@ -48,6 +62,21 @@ struct PlayerLiveStatusView: View {
                     // layered in alongside a stale status.
                     if viewModel.hasEnded {
                         statusCard(icon: "flag.checkered", title: "This session has ended", subtitle: "Thanks for playing — ask the host if there's another one coming up.", iconColor: Color.primary)
+
+                        if let onGameEnded {
+                            Button {
+                                onGameEnded()
+                            } label: {
+                                Text("View summary")
+                                    .font(.custom("DIN-Medium", size: 16))
+                                    .foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(accentColor, in: RoundedRectangle(cornerRadius: 12))
+                                    .contentShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                            .buttonStyle(.plain)
+                        }
                     } else {
                         if !viewModel.isConnected {
                             reconnectingBanner
@@ -515,7 +544,7 @@ private let previewGame = Game(
         joinedAt: Date()
     )
     return NavigationStack {
-        PlayerLiveStatusView(game: previewGame, previewViewModel: vm)
+        PlayerLiveStatusView(game: previewGame, previewViewModel: vm, onGameEnded: {})
     }
 }
 
