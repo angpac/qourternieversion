@@ -18,6 +18,11 @@ struct CreateGameView: View {
                 TextField("Name", text: $viewModel.name)
                 TextField("Location", text: $viewModel.location)
                 DatePicker("Date & time", selection: $viewModel.startsAt, displayedComponents: [.date, .hourAndMinute])
+                    // Explicit rather than relying on the AccentColor asset
+                    // to carry through — this screen showed the system's
+                    // default blue instead of the app's green on a real
+                    // device.
+                    .tint(Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255))
             }
 
             if !viewModel.availableClubs.isEmpty {
