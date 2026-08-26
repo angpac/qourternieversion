@@ -17,7 +17,17 @@ struct CreateGameView: View {
             Section("Game details") {
                 TextField("Name", text: $viewModel.name)
                 TextField("Location", text: $viewModel.location)
-                DatePicker("Date & time", selection: $viewModel.startsAt)
+                DatePicker("Date", selection: $viewModel.startsAt, displayedComponents: [.date])
+                // Split out from the combined date+time picker: the
+                // calendar half works fine with a Magic Keyboard
+                // trackpad, but the compact style's hour/minute field
+                // doesn't reliably register trackpad clicks — touch
+                // works, trackpad doesn't. .wheel's hour/minute wheels
+                // are an older, more pointer-mature component (native
+                // scroll-to-navigate) and never present a popover, so
+                // this fixes just the half that was actually broken.
+                DatePicker("Time", selection: $viewModel.startsAt, displayedComponents: [.hourAndMinute])
+                    .datePickerStyle(.wheel)
             }
 
             if !viewModel.availableClubs.isEmpty {
