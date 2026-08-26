@@ -52,6 +52,18 @@ struct GameSummaryView: View {
         _recapPhotoURL = State(initialValue: game.recapPhotoUrl.flatMap(URL.init(string:)))
     }
 
+    /// Preview-only — skips `load()`'s network round trip by seeding the
+    /// same state it would have populated, so Canvas can render a filled-in
+    /// summary instead of spinning on a ProgressView forever with no backend.
+    fileprivate init(game: Game, isAdmin: Bool, previewTotalMatches: Int, previewTallies: [PlayerTally]) {
+        self.game = game
+        self.isAdmin = isAdmin
+        _recapPhotoURL = State(initialValue: game.recapPhotoUrl.flatMap(URL.init(string:)))
+        _totalMatches = State(initialValue: previewTotalMatches)
+        _tallies = State(initialValue: previewTallies)
+        _isLoading = State(initialValue: false)
+    }
+
     var body: some View {
         Group {
             if isLoading {
@@ -476,6 +488,33 @@ struct GameSummaryView: View {
                 .joined(separator: " & ")
             return MyMatchRow(id: match.id, scoreA: scoreA, scoreB: scoreB, myTeam: myTeam, opponentNames: opponentNames)
         }
+    }
+}
+
+#Preview("With recap photo") {
+    NavigationStack {
+        GameSummaryView(
+            game: Game(
+                id: UUID(),
+                name: "Sunday Open Play",
+                location: nil,
+                startsAt: nil,
+                numCourts: 4,
+                isDoubles: true,
+                format: .kingOfTheCourt,
+                formatSettings: [:],
+                joinCode: "ABC123",
+                status: "ended",
+                recapPhotoUrl: "https://picsum.photos/seed/qourt-recap/800/500"
+            ),
+            isAdmin: true,
+            previewTotalMatches: 42,
+            previewTallies: [
+                PlayerTally(id: UUID(), name: "Jamie Lee", gamesPlayed: 8, wins: 6),
+                PlayerTally(id: UUID(), name: "Alex Chen", gamesPlayed: 7, wins: 4),
+                PlayerTally(id: UUID(), name: "Sam Park", gamesPlayed: 6, wins: 3)
+            ]
+        )
     }
 }
 
