@@ -15,6 +15,7 @@ type GuestStatus = {
   game_format: string;
   is_doubles: boolean;
   join_code: string;
+  game_has_ended: boolean;
   player_status: "pending" | "queued" | "on_court" | "resting" | "removed";
   queue_position: number | null;
   court_name: string | null;
@@ -67,15 +68,17 @@ export default function StatusPage() {
     typeof window !== "undefined" ? localStorage.getItem("qourt_session_token") : null;
 
   const poll = useCallback(async () => {
-    if (!sessionToken) return;
+    if (!sessionToken) return undefined;
     const { data, error: rpcError } = await supabase.rpc("guest_status", {
       p_session_token: sessionToken,
     });
     if (rpcError) {
       setError(rpcError.message);
-      return;
+      return undefined;
     }
-    setStatus(data as GuestStatus);
+    const nextStatus = data as GuestStatus;
+    setStatus(nextStatus);
+    return nextStatus;
   }, [sessionToken]);
 
   const pollAnnouncements = useCallback(async () => {
@@ -91,13 +94,23 @@ export default function StatusPage() {
       router.replace("/");
       return;
     }
-    poll();
-    pollAnnouncements();
-    const interval = setInterval(() => {
-      poll();
+    // Once a game ends its queue/court/score data goes stale for good, so
+    // there is nothing left to poll for — stop hitting the RPCs instead of
+    // refetching the same "ended" snapshot every couple seconds forever.
+    let interval: ReturnType<typeof setInterval> | null = null;
+    async function tick() {
+      const nextStatus = await poll();
       pollAnnouncements();
-    }, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
+      if (nextStatus?.game_has_ended && interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    }
+    tick();
+    interval = setInterval(tick, POLL_INTERVAL_MS);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [router, sessionToken, poll, pollAnnouncements]);
 
   useEffect(() => {
@@ -215,6 +228,31 @@ export default function StatusPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-emerald-900 to-emerald-700">
         <p className="text-white">Loading…</p>
+      </main>
+    );
+  }
+
+  if (status.game_has_ended) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-gradient-to-b from-emerald-900 to-emerald-700 px-6 py-16">
+        <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl">
+          <div className="flex flex-col items-center gap-2 text-center">
+            <div className="text-5xl">🏁</div>
+            <p className="text-xl font-bold text-zinc-900">This session has ended</p>
+            <p className="text-sm text-zinc-500">
+              Thanks for playing — ask the host if there&apos;s another one coming up.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            localStorage.removeItem("qourt_session_token");
+            router.replace("/");
+          }}
+          className="rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white underline"
+        >
+          Join another game
+        </button>
       </main>
     );
   }
