@@ -21,7 +21,20 @@ struct ContentView: View {
         }
         .navigationTitle(game.name)
         .refreshable { await viewModel.refresh() }
-        .task { await viewModel.start(gameID: game.id) }
+        .task {
+            // Matches the "ended games skip the round trip" comment on
+            // `content` below — without this guard, start(gameID:) still
+            // ran a game_players fetch and opened a 4-table realtime
+            // channel for a game that's already over, on every visit.
+            guard !game.hasEnded else { return }
+            await viewModel.start(gameID: game.id)
+        }
+        .onDisappear {
+            // HostCourtsView does the same for WatchHostViewModel; this
+            // view's own realtime channel needs the same cleanup, or it's
+            // left open server-side every time a game is visited.
+            Task { await viewModel.unsubscribe() }
+        }
         .confirmationDialog(
             "Leave this game?",
             isPresented: $isConfirmingLeave,

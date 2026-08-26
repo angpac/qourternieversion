@@ -48,7 +48,15 @@ struct WatchGamesListView: View {
             Task { await gamesViewModel.load(role: role) }
         }
         .onChange(of: bridge.isSignedIn) { _, signedIn in
-            guard signedIn else { return }
+            guard signedIn else {
+                // The phone can push a signed-out context while this
+                // screen is already open (WatchSessionBridge.swift's
+                // signedOutKey handling) — without this, the list just
+                // keeps showing whatever it last loaded instead of
+                // falling back to signedOutState.
+                isSignedIn = false
+                return
+            }
             // Tokens just arrived from the phone — everything that failed
             // on launch can now succeed.
             Task {
@@ -65,9 +73,18 @@ struct WatchGamesListView: View {
             return
         }
         isSignedIn = true
-        await gamesViewModel.load(role: role)
         await eligibilityProbe.checkIsAdmin()
         isEligibleForAdmin = eligibilityProbe.isAdmin
+        // Eligibility can be revoked (e.g. a co-admin invite pulled) while
+        // storedRole is still "admin" from before. Without this, Settings'
+        // switch disappears entirely once ineligible — nothing left to tap
+        // it back with — and this list keeps querying admin games that no
+        // longer resolve to anything, stranding whatever player games this
+        // profile actually has.
+        if !isEligibleForAdmin && role == .admin {
+            storedRole = WatchRole.player.rawValue
+        }
+        await gamesViewModel.load(role: role)
     }
 
     private var emptyState: some View {
@@ -130,9 +147,13 @@ private struct GameRow: View {
                 .font(.footnote.weight(.semibold))
                 .lineLimit(1)
             Spacer()
-            // Status never rides on colour alone, matching the rest of the
-            // app's convention — there's always a word.
-            Text(game.hasEnded ? "ENDED" : "LIVE")
+            // "ONGOING" not "LIVE" — games.status also has draft/paused
+            // (see game_status enum), which aren't actually live play,
+            // and the phone's own My Games groups all three the same
+            // neutral way rather than claiming a more specific status
+            // than it means. Status never rides on colour alone, matching
+            // the rest of the app's convention — there's always a word.
+            Text(game.hasEnded ? "ENDED" : "ONGOING")
                 .font(.system(size: 9, weight: .bold))
                 .foregroundStyle(game.hasEnded ? Color.secondary : Color.green)
         }
