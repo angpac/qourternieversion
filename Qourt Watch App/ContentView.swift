@@ -2,12 +2,11 @@
 //  ContentView.swift
 //  Qourt Watch App
 //
-//  The Watch is a player companion for now: your place in line, your
-//  court, your score, and the host's announcements. Running a game from
-//  the wrist is deliberately not here yet — `HostCourtsView` and
-//  `WatchHostViewModel` hold that work until rotation can be settled off
-//  the phone. Anyone who administers a game is told so directly rather
-//  than being left to wonder where the controls went.
+//  The Watch is a player companion: your place in line, your court, your
+//  score, and the host's announcements. An admin gets an extra entry point
+//  into `HostCourtsView` to score whichever courts are live — remote
+//  control for the same match the iPad Scoreboard is already showing,
+//  driven by `WatchHostViewModel` straight against Supabase.
 //
 
 import SwiftUI
@@ -76,7 +75,16 @@ struct ContentView: View {
                 // when they have no active game, which would otherwise
                 // read as "the Watch app is broken".
                 if hostViewModel.isAdmin {
-                    hostPendingCard
+                    NavigationLink {
+                        HostCourtsView(viewModel: hostViewModel)
+                    } label: {
+                        Label("Score courts", systemImage: "sportscourt")
+                            .font(.system(size: 12, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.green)
+                    .padding(.top, 2)
                 }
             }
             .padding(.vertical, 4)
@@ -266,26 +274,6 @@ struct ContentView: View {
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.accentColor.opacity(0.18), in: RoundedRectangle(cornerRadius: 10))
-    }
-
-    /// Tells a host, in as many words, that the Watch is player-only right
-    /// now — so an admin who wears it doesn't hunt for court controls that
-    /// were never here.
-    private var hostPendingCard: some View {
-        VStack(spacing: 4) {
-            Label("Hosting", systemImage: "iphone.gen3")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-            Text("Courts and scoring stay on your iPhone for now. The Watch shows your own play.")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(8)
-        .frame(maxWidth: .infinity)
-        .background(Color.gray.opacity(0.18), in: RoundedRectangle(cornerRadius: 10))
-        .padding(.top, 2)
     }
 
     private func statusCard(icon: String, title: String, subtitle: String?) -> some View {

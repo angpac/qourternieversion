@@ -10,6 +10,35 @@ struct HostCourtsView: View {
     @State private var editing: WatchCourtMatch?
 
     var body: some View {
+        Group {
+            if viewModel.isLoading {
+                ProgressView()
+            } else {
+                courtsList
+            }
+        }
+        .navigationTitle("Score Courts")
+        .task { await viewModel.start() }
+        .onDisappear { Task { await viewModel.unsubscribe() } }
+        .sheet(item: $editing) { court in
+            if let matchID = court.matchID {
+                ScoreEntryView(
+                    title: court.courtName,
+                    scoreA: court.scoreA,
+                    scoreB: court.scoreB,
+                    onChange: { a, b in
+                        await viewModel.updateScore(matchID: matchID, scoreA: a, scoreB: b)
+                    },
+                    onSubmit: { a, b in
+                        await viewModel.reportFinalScore(matchID: matchID, scoreA: a, scoreB: b)
+                    },
+                    submitLabel: "Report final"
+                )
+            }
+        }
+    }
+
+    private var courtsList: some View {
         List {
             if let gameName = viewModel.gameName {
                 Text(gameName)
@@ -54,22 +83,6 @@ struct HostCourtsView: View {
                     }
                 }
                 .disabled(!court.hasLiveMatch)
-            }
-        }
-        .sheet(item: $editing) { court in
-            if let matchID = court.matchID {
-                ScoreEntryView(
-                    title: court.courtName,
-                    scoreA: court.scoreA,
-                    scoreB: court.scoreB,
-                    onChange: { a, b in
-                        await viewModel.updateScore(matchID: matchID, scoreA: a, scoreB: b)
-                    },
-                    onSubmit: { a, b in
-                        await viewModel.reportFinalScore(matchID: matchID, scoreA: a, scoreB: b)
-                    },
-                    submitLabel: "Report final"
-                )
             }
         }
     }

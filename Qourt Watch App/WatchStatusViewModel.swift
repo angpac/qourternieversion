@@ -73,8 +73,14 @@ final class WatchStatusViewModel {
         }
 
         do {
+            // !inner + games.status so an ended game drops off the wrist
+            // the moment the admin ends it, not just when this player's own
+            // status happens to change too — ending a game only ever
+            // touches games.status, never resets the participant rows, so
+            // without this a player who was still queued/on court when the
+            // game ended would see it forever.
             let rows: [ActivePlayerRow] = try await supabase.from("game_players")
-                .select("id, status, queue_position, joined_at, games(id, name)")
+                .select("id, status, queue_position, joined_at, games!inner(id, name)")
                 .eq("profile_id", value: userID)
                 .in("status", values: [
                     PlayerStatus.pending.rawValue,
@@ -82,6 +88,7 @@ final class WatchStatusViewModel {
                     PlayerStatus.onCourt.rawValue,
                     PlayerStatus.resting.rawValue
                 ])
+                .neq("games.status", value: "ended")
                 .order("joined_at", ascending: false)
                 .limit(1)
                 .execute()
