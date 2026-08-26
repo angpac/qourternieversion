@@ -24,7 +24,14 @@ struct JoinGameView: View {
             Form {
                 Section {
                     if isEditingCode {
-                        TextField("6-character code", text: $viewModel.joinCode)
+                        TextField("6-character code", text: Binding(
+                            get: { viewModel.joinCode },
+                            // Forces the actual value uppercase, not just the
+                            // on-screen keyboard's shift state — that alone
+                            // doesn't touch hardware-keyboard input or pasted
+                            // text, and the code is only ever stored uppercase.
+                            set: { viewModel.joinCode = $0.uppercased() }
+                        ))
                             .font(.custom("DIN-Regular", size: 17))
                             .textInputAutocapitalization(.characters)
                             .autocorrectionDisabled()

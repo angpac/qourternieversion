@@ -564,7 +564,14 @@ struct MyGamesView: View {
                                 .font(.subheadline)
                                 .foregroundStyle(labelColor)
 
-                            TextField("Invite Code", text: $adminInviteCode)
+                            TextField("Invite Code", text: Binding(
+                                get: { adminInviteCode },
+                                // Forces the actual value uppercase, not just the
+                                // on-screen keyboard's shift state — that alone
+                                // doesn't touch hardware-keyboard input or pasted
+                                // text, and the code is only ever stored uppercase.
+                                set: { adminInviteCode = $0.uppercased() }
+                            ))
                                 .textInputAutocapitalization(.characters)
                                 .autocorrectionDisabled()
                                 .padding()
