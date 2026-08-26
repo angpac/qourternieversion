@@ -187,6 +187,21 @@ final class BracketViewModel {
             }
             realtimeSubscriptions.append(subscription)
         }
+
+        // None of the tables above change when the admin ends the game —
+        // that only touches the games row itself — so without this the
+        // bracket screen never learns the session ended until something
+        // else forces a reload.
+        let gamesSubscription = channel.onPostgresChange(
+            AnyAction.self,
+            schema: "public",
+            table: "games",
+            filter: "id=eq.\(game.id)"
+        ) { [weak self] _ in
+            Task { await self?.loadAll() }
+        }
+        realtimeSubscriptions.append(gamesSubscription)
+
         try? await channel.subscribeWithError()
     }
 

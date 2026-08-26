@@ -21,6 +21,12 @@ struct WatchGame: Codable, Identifiable, Hashable {
 @Observable
 final class WatchStatusViewModel {
     var isLoading = true
+    /// Kept in step by realtime rather than only read once at `start(gameID:)`
+    /// — without this, a game ended while this screen is open would leave it
+    /// showing stale queue/court/score state forever, since none of the
+    /// tables below (game_players, matches, ...) change when a game ends.
+    var gameStatus: String?
+    var hasEnded: Bool { gameStatus == "ended" }
     var playerStatus: PlayerStatus?
     var queuePosition: Int?
     /// How many players are in line in total, so "#3" can be shown as
@@ -73,8 +79,18 @@ final class WatchStatusViewModel {
             let status: PlayerStatus
             let queue_position: Int?
         }
+        struct GameStatusRow: Decodable { let status: String }
 
         do {
+            if let row: GameStatusRow = try? await supabase.from("games")
+                .select("status")
+                .eq("id", value: gameID)
+                .single()
+                .execute()
+                .value {
+                gameStatus = row.status
+            }
+
             // No status filter here, unlike the old single-row auto-detect
             // query — this is always exactly the row for (userID, gameID),
             // so a player who left shows "You've left this game" instead of
@@ -325,6 +341,16 @@ final class WatchStatusViewModel {
             }
             realtimeSubscriptions.append(subscription)
         }
+
+        let gamesSubscription = channel.onPostgresChange(
+            AnyAction.self,
+            schema: "public",
+            table: "games",
+            filter: "id=eq.\(gameID)"
+        ) { [weak self] _ in
+            Task { await self?.refresh() }
+        }
+        realtimeSubscriptions.append(gamesSubscription)
 
         try? await channel.subscribeWithError()
     }

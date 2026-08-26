@@ -43,6 +43,7 @@ struct ClipStatus: Decodable {
     let game_format: String
     let is_doubles: Bool
     let join_code: String
+    let game_has_ended: Bool
     let player_status: ClipPlayerStatus
     let queue_position: Int?
     let court_name: String?

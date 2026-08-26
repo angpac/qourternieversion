@@ -188,6 +188,12 @@ final class ClipViewModel {
                 as: ClipStatus.self
             )
             statusError = nil
+            // A game's queue/court/score data is dead for good once it ends
+            // - stop hitting the RPCs instead of refetching the same
+            // "ended" snapshot every 2 seconds forever.
+            if status?.game_has_ended == true {
+                stopPolling()
+            }
         } catch {
             // A token that no longer resolves can't be retried out of -
             // polling would just fail forever behind stale data. Send them

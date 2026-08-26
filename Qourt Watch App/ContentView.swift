@@ -49,10 +49,13 @@ struct ContentView: View {
 
     @ViewBuilder
     private var content: some View {
-        // The list already marks this game Ended — skip the round trip
-        // entirely rather than show whatever queue/court state this
-        // player's row was frozen at when the admin ended it.
-        if game.hasEnded {
+        // `game.hasEnded` covers arriving at an already-ended game (the list
+        // skips the round trip entirely for those, see `.task` below).
+        // `viewModel.hasEnded` covers the game ending while this screen is
+        // already open — kept live by WatchStatusViewModel's own realtime
+        // subscription to the games row, since none of the tables the rest
+        // of this screen reacts to change when a game just ends.
+        if game.hasEnded || viewModel.hasEnded {
             statusCard(
                 icon: "flag.checkered",
                 title: "This session has ended",

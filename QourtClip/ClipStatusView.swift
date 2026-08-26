@@ -109,39 +109,11 @@ struct ClipStatusView: View {
     private func content(_ status: ClipStatus) -> some View {
         ScrollView {
             VStack(spacing: 24) {
-                header(status)
-
-                if viewModel.statusError != nil {
-                    reconnectingBanner
+                if status.game_has_ended {
+                    endedCard
+                } else {
+                    liveContent(status)
                 }
-
-                if let latest = viewModel.announcements.first {
-                    announcementBanner(latest)
-                }
-
-                if let won = status.wonLastMatch {
-                    lastResultBanner(status, won: won)
-                }
-
-                ClipCard(padding: 32) {
-                    VStack(spacing: 0) {
-                        statusBlock(status)
-
-                        if status.player_status == .queued && status.is_picker {
-                            pickerPrompt
-                        }
-
-                        if [.queued, .resting, .pending].contains(status.player_status) {
-                            footerActions(status)
-                        }
-                    }
-                }
-
-                installPrompt
-
-                Text("Join code: \(status.join_code)")
-                    .font(.system(.subheadline, design: .monospaced))
-                    .foregroundStyle(ClipTheme.emerald100)
             }
             .frame(maxWidth: ClipTheme.columnWidth)
             .padding(.horizontal, 24)
@@ -149,6 +121,62 @@ struct ClipStatusView: View {
             .frame(maxWidth: .infinity)
         }
         .refreshable { await viewModel.refresh() }
+    }
+
+    /// Matches the wording on the web client and the iOS/Watch apps exactly.
+    private var endedCard: some View {
+        VStack(spacing: 24) {
+            ClipCard(padding: 32) {
+                centeredCard(
+                    emoji: "🏁",
+                    title: "This session has ended",
+                    subtitle: "Thanks for playing — ask the host if there's another one coming up."
+                )
+            }
+            Button("Join another game") { viewModel.startOver() }
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.white)
+                .underline()
+        }
+    }
+
+    @ViewBuilder
+    private func liveContent(_ status: ClipStatus) -> some View {
+        Group {
+            header(status)
+
+            if viewModel.statusError != nil {
+                reconnectingBanner
+            }
+
+            if let latest = viewModel.announcements.first {
+                announcementBanner(latest)
+            }
+
+            if let won = status.wonLastMatch {
+                lastResultBanner(status, won: won)
+            }
+
+            ClipCard(padding: 32) {
+                VStack(spacing: 0) {
+                    statusBlock(status)
+
+                    if status.player_status == .queued && status.is_picker {
+                        pickerPrompt
+                    }
+
+                    if [.queued, .resting, .pending].contains(status.player_status) {
+                        footerActions(status)
+                    }
+                }
+            }
+
+            installPrompt
+
+            Text("Join code: \(status.join_code)")
+                .font(.system(.subheadline, design: .monospaced))
+                .foregroundStyle(ClipTheme.emerald100)
+        }
     }
 
     private func header(_ status: ClipStatus) -> some View {
