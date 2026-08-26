@@ -296,17 +296,27 @@ struct GameSummaryView: View {
         .disabled(isUploadingRecapPhoto)
     }
 
+    /// Whatever shape the admin uploaded — portrait, square, a wide group
+    /// shot — shows in full at its own aspect ratio rather than being
+    /// force-cropped into one fixed box, which used to cut people off the
+    /// edges of anything that wasn't already close to 16:10. minHeight
+    /// keeps a very wide panorama from collapsing to a sliver; maxHeight
+    /// keeps a very tall portrait from taking over the whole screen. Either
+    /// cap can leave a letterboxed gap, which is why this — unlike the old
+    /// version — carries its own background instead of relying on
+    /// RoundedRectangle's clip alone.
     private func recapPhotoCard(url: URL) -> some View {
         AsyncImage(url: url) { phase in
             switch phase {
             case let .success(image):
-                image.resizable().aspectRatio(contentMode: .fill)
+                image.resizable().aspectRatio(contentMode: .fit)
             default:
                 Color.appSurface
             }
         }
         .frame(maxWidth: .infinity)
-        .aspectRatio(16 / 10, contentMode: .fill)
+        .frame(minHeight: 140, maxHeight: 340)
+        .background(Color.appSurface)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(alignment: .bottomTrailing) {
             if isAdmin {
@@ -491,29 +501,61 @@ struct GameSummaryView: View {
     }
 }
 
-#Preview("With recap photo") {
+private func previewGameWithRecapPhoto(seed: String, width: Int, height: Int) -> Game {
+    Game(
+        id: UUID(),
+        name: "Sunday Open Play",
+        location: nil,
+        startsAt: nil,
+        numCourts: 4,
+        isDoubles: true,
+        format: .kingOfTheCourt,
+        formatSettings: [:],
+        joinCode: "ABC123",
+        status: "ended",
+        recapPhotoUrl: "https://picsum.photos/seed/\(seed)/\(width)/\(height)"
+    )
+}
+
+private let previewTalliesForRecapPhoto = [
+    PlayerTally(id: UUID(), name: "Jamie Lee", gamesPlayed: 8, wins: 6),
+    PlayerTally(id: UUID(), name: "Alex Chen", gamesPlayed: 7, wins: 4),
+    PlayerTally(id: UUID(), name: "Sam Park", gamesPlayed: 6, wins: 3)
+]
+
+// Three different upload shapes on purpose — landscape, portrait, and a
+// wide panorama — to check the recap photo card's sizing against each,
+// since it now shows every photo at its own aspect ratio instead of
+// force-cropping into one fixed box.
+#Preview("Recap photo — landscape") {
     NavigationStack {
         GameSummaryView(
-            game: Game(
-                id: UUID(),
-                name: "Sunday Open Play",
-                location: nil,
-                startsAt: nil,
-                numCourts: 4,
-                isDoubles: true,
-                format: .kingOfTheCourt,
-                formatSettings: [:],
-                joinCode: "ABC123",
-                status: "ended",
-                recapPhotoUrl: "https://picsum.photos/seed/qourt-recap/800/500"
-            ),
+            game: previewGameWithRecapPhoto(seed: "qourt-recap-landscape", width: 800, height: 500),
             isAdmin: true,
             previewTotalMatches: 42,
-            previewTallies: [
-                PlayerTally(id: UUID(), name: "Jamie Lee", gamesPlayed: 8, wins: 6),
-                PlayerTally(id: UUID(), name: "Alex Chen", gamesPlayed: 7, wins: 4),
-                PlayerTally(id: UUID(), name: "Sam Park", gamesPlayed: 6, wins: 3)
-            ]
+            previewTallies: previewTalliesForRecapPhoto
+        )
+    }
+}
+
+#Preview("Recap photo — portrait") {
+    NavigationStack {
+        GameSummaryView(
+            game: previewGameWithRecapPhoto(seed: "qourt-recap-portrait", width: 500, height: 900),
+            isAdmin: true,
+            previewTotalMatches: 42,
+            previewTallies: previewTalliesForRecapPhoto
+        )
+    }
+}
+
+#Preview("Recap photo — wide panorama") {
+    NavigationStack {
+        GameSummaryView(
+            game: previewGameWithRecapPhoto(seed: "qourt-recap-panorama", width: 1600, height: 400),
+            isAdmin: true,
+            previewTotalMatches: 42,
+            previewTallies: previewTalliesForRecapPhoto
         )
     }
 }
