@@ -11,6 +11,7 @@ struct CreateGameView: View {
     var onFinished: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @State private var isShowingTimePicker = false
 
     var body: some View {
         Form {
@@ -18,16 +19,7 @@ struct CreateGameView: View {
                 TextField("Name", text: $viewModel.name)
                 TextField("Location", text: $viewModel.location)
                 DatePicker("Date", selection: $viewModel.startsAt, displayedComponents: [.date])
-                // Split out from the combined date+time picker: the
-                // calendar half works fine with a Magic Keyboard
-                // trackpad, but the compact style's hour/minute field
-                // doesn't reliably register trackpad clicks — touch
-                // works, trackpad doesn't. .wheel's hour/minute wheels
-                // are an older, more pointer-mature component (native
-                // scroll-to-navigate) and never present a popover, so
-                // this fixes just the half that was actually broken.
-                DatePicker("Time", selection: $viewModel.startsAt, displayedComponents: [.hourAndMinute])
-                    .datePickerStyle(.wheel)
+                timeRow
             }
 
             if !viewModel.availableClubs.isEmpty {
@@ -148,6 +140,39 @@ struct CreateGameView: View {
             if let userID = auth.userID {
                 await viewModel.loadAvailableClubs(ownerID: userID)
             }
+        }
+    }
+
+    /// A compact row matching Date's look — tap to reveal the picker,
+    /// same as the calendar does — rather than the wheel sitting inline
+    /// and always expanded. The popover's own presentation already works
+    /// fine with a Magic Keyboard trackpad (same mechanism the Date field
+    /// uses); what was actually broken was the compact style's built-in
+    /// hour/minute editor, so wheel style — inside a popover we control —
+    /// replaces just that.
+    private var timeRow: some View {
+        Button {
+            isShowingTimePicker = true
+        } label: {
+            HStack {
+                Text("Time")
+                    .foregroundStyle(Color.primary)
+                Spacer()
+                Text(viewModel.startsAt, style: .time)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $isShowingTimePicker) {
+            DatePicker(
+                "Time",
+                selection: $viewModel.startsAt,
+                displayedComponents: [.hourAndMinute]
+            )
+            .datePickerStyle(.wheel)
+            .labelsHidden()
+            .padding()
+            .presentationCompactAdaptation(.popover)
         }
     }
 
