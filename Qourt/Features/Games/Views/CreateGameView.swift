@@ -18,8 +18,7 @@ struct CreateGameView: View {
             Section("Game details") {
                 TextField("Name", text: $viewModel.name)
                 TextField("Location", text: $viewModel.location)
-                DatePicker("Date", selection: $viewModel.startsAt, displayedComponents: [.date])
-                timeRow
+                dateAndTimeRow
             }
 
             if !viewModel.availableClubs.isEmpty {
@@ -158,24 +157,34 @@ struct CreateGameView: View {
         }
     }
 
-    /// A compact row matching Date's look — tap to reveal the picker,
-    /// same as the calendar does — rather than the wheel sitting inline
-    /// and always expanded. The popover's own presentation already works
-    /// fine with a Magic Keyboard trackpad (same mechanism the Date field
-    /// uses); what was actually broken was the compact style's built-in
-    /// hour/minute editor, so wheel style — inside a popover we control —
-    /// replaces just that.
-    private var timeRow: some View {
+    /// One row, "Date & time", with the date and time pills side by side —
+    /// the original look, before this got split into two stacked rows to
+    /// chase a trackpad bug. The date pill is the untouched native
+    /// DatePicker, which was never the problem. The time pill is a plain
+    /// button styled to match it, tapping into a wheel picker inside a
+    /// popover we control — that popover's own presentation already works
+    /// fine with a Magic Keyboard trackpad (same mechanism the date pill
+    /// uses); what was actually broken was the compact style's *built-in*
+    /// hour/minute editor, so this replaces just that, not the row layout.
+    private var dateAndTimeRow: some View {
+        HStack {
+            Text("Date & time")
+            Spacer()
+            DatePicker("", selection: $viewModel.startsAt, displayedComponents: [.date])
+                .labelsHidden()
+            timePill
+        }
+    }
+
+    private var timePill: some View {
         Button {
             isShowingTimePicker = true
         } label: {
-            HStack {
-                Text("Time")
-                    .foregroundStyle(Color.primary)
-                Spacer()
-                Text(viewModel.startsAt, style: .time)
-                    .foregroundStyle(.secondary)
-            }
+            Text(viewModel.startsAt, style: .time)
+                .foregroundStyle(Color.primary)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 5)
+                .background(Color(.tertiarySystemFill), in: Capsule())
         }
         .buttonStyle(.plain)
         .popover(isPresented: $isShowingTimePicker) {
