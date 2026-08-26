@@ -181,7 +181,13 @@ struct CreateGameView: View {
             isShowingTimePicker = true
         } label: {
             Text(viewModel.startsAt, style: .time)
-                .foregroundStyle(Color.primary)
+                // Matches the date pill's own active-state color, which
+                // turns its accent green while its calendar is open.
+                .foregroundStyle(
+                    isShowingTimePicker
+                        ? Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
+                        : Color.primary
+                )
                 .padding(.horizontal, 11)
                 .padding(.vertical, 5)
                 .background(Color(.tertiarySystemFill), in: Capsule())
