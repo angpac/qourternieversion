@@ -215,7 +215,14 @@ private struct ScoreboardCourtCard: View {
         }
         .padding(24 * scale)
         .frame(maxWidth: .infinity)
-        .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 20 * scale))
+        .background {
+            if court.isChallengeCourt {
+                ChallengeCourtStripeBackground(baseColor: Color.appSurface, stripeColor: goldColor.opacity(0.16))
+                    .clipShape(RoundedRectangle(cornerRadius: 20 * scale))
+            } else {
+                RoundedRectangle(cornerRadius: 20 * scale).fill(Color.appSurface)
+            }
+        }
         .overlay {
             if court.isChallengeCourt {
                 RoundedRectangle(cornerRadius: 20 * scale)

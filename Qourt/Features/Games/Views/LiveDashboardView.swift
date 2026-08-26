@@ -556,7 +556,14 @@ private struct CourtCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
             .frame(minHeight: 100)
-            .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 12))
+            .background {
+                if court.isChallengeCourt {
+                    ChallengeCourtStripeBackground(baseColor: Color.appSurface, stripeColor: goldColor.opacity(0.16))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                } else {
+                    RoundedRectangle(cornerRadius: 12).fill(Color.appSurface)
+                }
+            }
             .overlay {
                 if court.isChallengeCourt {
                     RoundedRectangle(cornerRadius: 12)
