@@ -407,12 +407,10 @@ struct LiveDashboardView: View {
                 }
             } else {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 12)], spacing: 12) {
-                    let topPosition = viewModel.courts.map(\.position).max()
                     ForEach(viewModel.courts) { court in
                         CourtCard(
                             court: court,
                             match: viewModel.activeMatches[court.id],
-                            isKingOfTheCourtTopCourt: viewModel.isKingOfTheCourt && court.position == topPosition,
                             onTapEmpty: { if !viewModel.isPaused { courtForMatchPicker = court } },
                             onTapMatch: { match in matchToScore = match }
                         )
@@ -475,11 +473,6 @@ struct LiveDashboardView: View {
 private struct CourtCard: View {
     let court: Court
     let match: MatchWithPlayers?
-    /// True only for the highest-`position` court in a King of the Court
-    /// game — the ladder's top rung, i.e. the actual "King's Court" — not
-    /// to be confused with `court.isChallengeCourt`, which marks the
-    /// unrelated Challenge Court format's one designated court instead.
-    let isKingOfTheCourtTopCourt: Bool
     let onTapEmpty: () -> Void
     let onTapMatch: (MatchWithPlayers) -> Void
 
@@ -503,7 +496,7 @@ private struct CourtCard: View {
                     }
                     Spacer()
                     if court.isChallengeCourt {
-                        Image(systemName: "flame.fill")
+                        Image(systemName: "crown.fill")
                             .foregroundStyle(goldColor)
                     } else if let match {
                         Circle()
@@ -513,7 +506,7 @@ private struct CourtCard: View {
                 }
 
                 if court.isChallengeCourt {
-                    Text("CHALLENGE COURT")
+                    Text("KING'S COURT")
                         .font(.custom("DIN-Medium", size: 11))
                         .foregroundStyle(goldColor)
                 }
@@ -563,14 +556,7 @@ private struct CourtCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
             .frame(minHeight: 100)
-            .background {
-                if isKingOfTheCourtTopCourt {
-                    ChallengeCourtStripeBackground(baseColor: Color.appSurface, stripeColor: goldColor.opacity(0.16))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                } else {
-                    RoundedRectangle(cornerRadius: 12).fill(Color.appSurface)
-                }
-            }
+            .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 12))
             .overlay {
                 if court.isChallengeCourt {
                     RoundedRectangle(cornerRadius: 12)
@@ -611,4 +597,27 @@ private struct CourtCard: View {
             status: "live"
         ))
     }
+}
+
+/// Local-only, no Supabase round trip — matches the design team's hi-fi for
+/// the Challenge Court card exactly (crown, "KING'S COURT", DEFENDING,
+/// win streak), so it can be checked directly in Canvas.
+#Preview("Challenge Court card") {
+    let gameID = UUID()
+    let court = Court(
+        id: UUID(), gameId: gameID, name: "Court 4", position: 3,
+        isLaneSplit: false, isChallengeCourt: true, winStreak: 4, singlesOverride: nil
+    )
+    func player(_ name: String) -> GamePlayer {
+        GamePlayer(id: UUID(), gameId: gameID, profileId: nil, displayName: name, skillLevel: "Advanced", status: .onCourt, queuePosition: nil, joinedAt: Date())
+    }
+    let match = MatchWithPlayers(
+        match: Match(id: UUID(), gameId: gameID, courtId: court.id, status: .inProgress, scoreA: nil, scoreB: nil, startedAt: Date().addingTimeInterval(-20 * 60 - 12), endedAt: nil),
+        teamA: [player("Rayhan R."), player("Kynan L.")],
+        teamB: []
+    )
+    return CourtCard(court: court, match: match, onTapEmpty: {}, onTapMatch: { _ in })
+        .padding()
+        .frame(width: 220)
+        .background(Color.appBackground)
 }

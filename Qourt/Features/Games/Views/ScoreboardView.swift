@@ -38,17 +38,11 @@ struct ScoreboardView: View {
                         columns: [GridItem(.adaptive(minimum: 340 * scale, maximum: 560 * scale), spacing: 20 * scale)],
                         spacing: 20 * scale
                     ) {
-                        let topPosition = viewModel.courts.map(\.position).max()
                         ForEach(viewModel.courts) { court in
                             Button {
                                 focusedCourt = court
                             } label: {
-                                ScoreboardCourtCard(
-                                    court: court,
-                                    match: viewModel.activeMatches[court.id],
-                                    scale: scale,
-                                    isKingOfTheCourtTopCourt: viewModel.isKingOfTheCourt && court.position == topPosition
-                                )
+                                ScoreboardCourtCard(court: court, match: viewModel.activeMatches[court.id], scale: scale)
                             }
                             .buttonStyle(.plain)
                         }
@@ -154,10 +148,6 @@ private struct ScoreboardCourtCard: View {
     let court: Court
     let match: MatchWithPlayers?
     let scale: CGFloat
-    /// True only for the highest-`position` court in a King of the Court
-    /// game — the ladder's top rung — not `court.isChallengeCourt`, which
-    /// marks the unrelated Challenge Court format's one designated court.
-    let isKingOfTheCourtTopCourt: Bool
 
     private let labelColor = Color.appSecondaryText
     private let goldColor = Color(red: 0xB8 / 255, green: 0x8A / 255, blue: 0x2B / 255)
@@ -169,7 +159,7 @@ private struct ScoreboardCourtCard: View {
                     .font(.custom("DIN-Medium", size: 22 * scale))
                     .foregroundStyle(Color.primary)
                 if court.isChallengeCourt {
-                    Image(systemName: "flame.fill")
+                    Image(systemName: "crown.fill")
                         .font(.system(size: 18 * scale))
                         .foregroundStyle(goldColor)
                 }
@@ -225,14 +215,7 @@ private struct ScoreboardCourtCard: View {
         }
         .padding(24 * scale)
         .frame(maxWidth: .infinity)
-        .background {
-            if isKingOfTheCourtTopCourt {
-                ChallengeCourtStripeBackground(baseColor: Color.appSurface, stripeColor: goldColor.opacity(0.16))
-                    .clipShape(RoundedRectangle(cornerRadius: 20 * scale))
-            } else {
-                RoundedRectangle(cornerRadius: 20 * scale).fill(Color.appSurface)
-            }
-        }
+        .background(Color.appSurface, in: RoundedRectangle(cornerRadius: 20 * scale))
         .overlay {
             if court.isChallengeCourt {
                 RoundedRectangle(cornerRadius: 20 * scale)
