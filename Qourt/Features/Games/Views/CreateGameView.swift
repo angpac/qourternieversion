@@ -182,7 +182,11 @@ struct CreateGameView: View {
 
     private var timePill: some View {
         Button {
-            withAnimation { isShowingTimePicker.toggle() }
+            // No withAnimation — wrapping this made the text's color change
+            // visibly lag behind a tap, unlike the date pill's instant
+            // switch to green. The row below still animates in on its own
+            // via the Form's default insertion animation.
+            isShowingTimePicker.toggle()
         } label: {
             Text(viewModel.startsAt, style: .time)
                 // Matches the date pill's own active-state color, which
@@ -199,11 +203,19 @@ struct CreateGameView: View {
         .buttonStyle(.plain)
     }
 
-    /// Scaled down from the wheel's native size, which otherwise renders
-    /// noticeably larger/bolder than the date calendar's own day-number
-    /// type — the scale is applied before the frame that then clips to
-    /// it, so the row's height shrinks along with the visual rather than
-    /// leaving the wheel's original, now-empty space around it.
+    /// Styled as its own elevated card (white background, shadow) rather
+    /// than a plain Form row, matching the date pill's own calendar, which
+    /// renders as a floating popup rather than blending into the Name/
+    /// Location/Date & time card above it. `listRowBackground(.clear)`
+    /// strips the Form's default white row background so this card reads
+    /// as a separate surface against `appBackground`, not a continuation
+    /// of the section above it.
+    ///
+    /// Scaled down further from the wheel's native size, which otherwise
+    /// still read larger than the date calendar's own day-number type —
+    /// the scale is applied before the frame that then clips to it, so
+    /// the row's height shrinks along with the visual rather than leaving
+    /// the wheel's original, now-empty space around it.
     private var timeWheel: some View {
         DatePicker(
             "Time",
@@ -212,11 +224,15 @@ struct CreateGameView: View {
         )
         .datePickerStyle(.wheel)
         .labelsHidden()
-        .scaleEffect(0.82)
-        .frame(height: 130)
+        .scaleEffect(0.72)
+        .frame(height: 112)
         .frame(maxWidth: .infinity)
         .clipped()
-        .listRowInsets(EdgeInsets())
+        .padding(.vertical, 6)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
+        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+        .listRowBackground(Color.clear)
     }
 
     private func courtSinglesBinding(_ index: Int) -> Binding<Bool> {
