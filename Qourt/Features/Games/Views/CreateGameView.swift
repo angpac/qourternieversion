@@ -102,25 +102,10 @@ struct CreateGameView: View {
                                     .foregroundStyle(isSelected ? .white : Color.appSecondaryText)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding()
-                                    .background {
-                                        if isSelected {
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .fill(Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255))
-                                        } else if format == .challengeCourt {
-                                            // The only format with a special court once the
-                                            // game is live — the same diagonal stripe flags
-                                            // it here too, so the picker previews what's
-                                            // coming rather than looking identical to the
-                                            // other seven formats until you're already in.
-                                            ChallengeCourtStripeBackground(
-                                                baseColor: .white,
-                                                stripeColor: Color(red: 0xB8 / 255, green: 0x8A / 255, blue: 0x2B / 255).opacity(0.18)
-                                            )
-                                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                                        } else {
-                                            RoundedRectangle(cornerRadius: 12).fill(Color.white)
-                                        }
-                                    }
+                                    .background(
+                                        isSelected ? Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255) : Color.white,
+                                        in: RoundedRectangle(cornerRadius: 12)
+                                    )
                                 }
                                 .buttonStyle(.plain)
                             }

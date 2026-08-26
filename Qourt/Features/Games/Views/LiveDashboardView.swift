@@ -407,10 +407,12 @@ struct LiveDashboardView: View {
                 }
             } else {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 12)], spacing: 12) {
+                    let topPosition = viewModel.courts.map(\.position).max()
                     ForEach(viewModel.courts) { court in
                         CourtCard(
                             court: court,
                             match: viewModel.activeMatches[court.id],
+                            isKingOfTheCourtTopCourt: viewModel.isKingOfTheCourt && court.position == topPosition,
                             onTapEmpty: { if !viewModel.isPaused { courtForMatchPicker = court } },
                             onTapMatch: { match in matchToScore = match }
                         )
@@ -473,6 +475,11 @@ struct LiveDashboardView: View {
 private struct CourtCard: View {
     let court: Court
     let match: MatchWithPlayers?
+    /// True only for the highest-`position` court in a King of the Court
+    /// game — the ladder's top rung, i.e. the actual "King's Court" — not
+    /// to be confused with `court.isChallengeCourt`, which marks the
+    /// unrelated Challenge Court format's one designated court instead.
+    let isKingOfTheCourtTopCourt: Bool
     let onTapEmpty: () -> Void
     let onTapMatch: (MatchWithPlayers) -> Void
 
@@ -557,7 +564,7 @@ private struct CourtCard: View {
             .padding()
             .frame(minHeight: 100)
             .background {
-                if court.isChallengeCourt {
+                if isKingOfTheCourtTopCourt {
                     ChallengeCourtStripeBackground(baseColor: Color.appSurface, stripeColor: goldColor.opacity(0.16))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 } else {

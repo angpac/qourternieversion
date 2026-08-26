@@ -38,11 +38,17 @@ struct ScoreboardView: View {
                         columns: [GridItem(.adaptive(minimum: 340 * scale, maximum: 560 * scale), spacing: 20 * scale)],
                         spacing: 20 * scale
                     ) {
+                        let topPosition = viewModel.courts.map(\.position).max()
                         ForEach(viewModel.courts) { court in
                             Button {
                                 focusedCourt = court
                             } label: {
-                                ScoreboardCourtCard(court: court, match: viewModel.activeMatches[court.id], scale: scale)
+                                ScoreboardCourtCard(
+                                    court: court,
+                                    match: viewModel.activeMatches[court.id],
+                                    scale: scale,
+                                    isKingOfTheCourtTopCourt: viewModel.isKingOfTheCourt && court.position == topPosition
+                                )
                             }
                             .buttonStyle(.plain)
                         }
@@ -148,6 +154,10 @@ private struct ScoreboardCourtCard: View {
     let court: Court
     let match: MatchWithPlayers?
     let scale: CGFloat
+    /// True only for the highest-`position` court in a King of the Court
+    /// game — the ladder's top rung — not `court.isChallengeCourt`, which
+    /// marks the unrelated Challenge Court format's one designated court.
+    let isKingOfTheCourtTopCourt: Bool
 
     private let labelColor = Color.appSecondaryText
     private let goldColor = Color(red: 0xB8 / 255, green: 0x8A / 255, blue: 0x2B / 255)
@@ -216,7 +226,7 @@ private struct ScoreboardCourtCard: View {
         .padding(24 * scale)
         .frame(maxWidth: .infinity)
         .background {
-            if court.isChallengeCourt {
+            if isKingOfTheCourtTopCourt {
                 ChallengeCourtStripeBackground(baseColor: Color.appSurface, stripeColor: goldColor.opacity(0.16))
                     .clipShape(RoundedRectangle(cornerRadius: 20 * scale))
             } else {
