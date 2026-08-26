@@ -11,17 +11,13 @@ struct CreateGameView: View {
     var onFinished: () -> Void
 
     @Environment(\.dismiss) private var dismiss
-    @State private var isShowingTimePicker = false
 
     var body: some View {
         Form {
             Section("Game details") {
                 TextField("Name", text: $viewModel.name)
                 TextField("Location", text: $viewModel.location)
-                dateAndTimeRow
-                if isShowingTimePicker {
-                    timeWheel
-                }
+                DatePicker("Date & time", selection: $viewModel.startsAt, displayedComponents: [.date, .hourAndMinute])
             }
 
             if !viewModel.availableClubs.isEmpty {
@@ -158,81 +154,6 @@ struct CreateGameView: View {
                 await viewModel.loadAvailableClubs(ownerID: userID)
             }
         }
-    }
-
-    /// One row, "Date & time", with the date and time pills side by side —
-    /// the original look, before this got split into two stacked rows to
-    /// chase a trackpad bug. The date pill is the untouched native
-    /// DatePicker, which was never the problem. The time pill is a plain
-    /// button that expands `timeWheel` as the *next row in the Form*, not
-    /// a `.popover` — `.popover`'s arrowEdge turned out to be unreliable
-    /// here (verified on-device: neither .top nor .bottom stopped it from
-    /// opening upward over Name/Location), where an ordinary Form row can
-    /// only ever land below, exactly like the date pill's own calendar
-    /// pushes the rows under it down instead of floating over them.
-    private var dateAndTimeRow: some View {
-        HStack {
-            Text("Date & time")
-            Spacer()
-            DatePicker("", selection: $viewModel.startsAt, displayedComponents: [.date])
-                .labelsHidden()
-            timePill
-        }
-    }
-
-    private var timePill: some View {
-        Button {
-            // No withAnimation — wrapping this made the text's color change
-            // visibly lag behind a tap, unlike the date pill's instant
-            // switch to green. The row below still animates in on its own
-            // via the Form's default insertion animation.
-            isShowingTimePicker.toggle()
-        } label: {
-            Text(viewModel.startsAt, style: .time)
-                // Matches the date pill's own active-state color, which
-                // turns its accent green while its calendar is open.
-                .foregroundStyle(
-                    isShowingTimePicker
-                        ? Color(red: 0x2C / 255, green: 0x9C / 255, blue: 0x5B / 255)
-                        : Color.primary
-                )
-                .padding(.horizontal, 11)
-                .padding(.vertical, 5)
-                .background(Color(.tertiarySystemFill), in: Capsule())
-        }
-        .buttonStyle(.plain)
-    }
-
-    /// Styled as its own elevated card (white background, shadow) rather
-    /// than a plain Form row, matching the date pill's own calendar, which
-    /// renders as a floating popup rather than blending into the Name/
-    /// Location/Date & time card above it. `listRowBackground(.clear)`
-    /// strips the Form's default white row background so this card reads
-    /// as a separate surface against `appBackground`, not a continuation
-    /// of the section above it.
-    ///
-    /// Scaled down further from the wheel's native size, which otherwise
-    /// still read larger than the date calendar's own day-number type —
-    /// the scale is applied before the frame that then clips to it, so
-    /// the row's height shrinks along with the visual rather than leaving
-    /// the wheel's original, now-empty space around it.
-    private var timeWheel: some View {
-        DatePicker(
-            "Time",
-            selection: $viewModel.startsAt,
-            displayedComponents: [.hourAndMinute]
-        )
-        .datePickerStyle(.wheel)
-        .labelsHidden()
-        .scaleEffect(0.72)
-        .frame(height: 112)
-        .frame(maxWidth: .infinity)
-        .clipped()
-        .padding(.vertical, 6)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
-        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-        .listRowBackground(Color.clear)
     }
 
     private func courtSinglesBinding(_ index: Int) -> Binding<Bool> {
