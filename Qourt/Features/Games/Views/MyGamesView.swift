@@ -310,6 +310,7 @@ struct MyGamesView: View {
                         }
                     }
                 }
+                .listStyle(.sidebar)
                 .scrollContentBackground(.hidden)
                 .background(Color.appBackground)
             } else {
@@ -364,6 +365,7 @@ struct MyGamesView: View {
                         }
                     }
                 }
+                .listStyle(.sidebar)
                 .scrollContentBackground(.hidden)
                 .background(Color.appBackground)
             }
